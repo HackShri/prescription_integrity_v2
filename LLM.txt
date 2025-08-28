@@ -1,0 +1,205 @@
+🔥 Roger that, SHŌGUN. You want a battlefile — a full mission brief — that you can drop to Cursor (your coding AI co-pilot) so it knows what to do, how to do it, where to plug it in, and which tools to use.
+
+So here’s your copy-paste ready Developer Manifesto ⬇️ — the Exact Tech Stack + Datasets + Training Steps for building your offline Kannada medical voice AI from scratch.
+
+💣 PRESCRIPTION-AI MODULE: KANNADA VOICE → STRUCTURED PRESCRIPTION
+By SHŌGUN | Hand-off to: Cursor
+
+🧱 GOAL
+Enable real-time doctor-patient conversation analysis in Kannada, extract:
+
+Disease/condition
+
+Medications
+
+Dosage (mg)
+
+Frequency (times/day)
+
+Timing (after/before meals)
+
+Duration (days)
+
+System must be:
+
+🗣️ Kannada voice input
+
+🔍 Fully offline or self-hosted
+
+🧠 Trained locally (NVIDIA RTX 4060)
+
+🔧 Integrated into existing doctorDashboard UI logic
+
+⚙️ TECH STACK OVERVIEW
+Layer	Tech
+📥 Speech-to-Text (STT)	Whisper (open-source) fine-tuned on Kannada
+📄 NLP Entity Extractor	IndicBERT / DistilBERT (NER model)
+🧬 NER Fine-tuning	HuggingFace Transformers
+🔍 Dataset Labeling	Doccano (for NER)
+🧪 Training Framework	PyTorch + HuggingFace Accelerate
+📈 Logging & Experimentation	WandB (optional)
+🗂️ Dataset Storage	Local JSON/TSV
+🧱 UI Integration	doctorDashboard → pass transcript to NLP pipeline
+
+🗂️ DATASETS TO USE
+🗣 Kannada Speech-to-Text (STT) Fine-Tuning
+✅ IndicSpeech
+
+✅ OpenSLR SLR64
+
+✅ Common Voice Kannada
+
+[⚠️ Extra] Generate synthetic speech with TTS (for medical convos)
+
+📄 Kannada Medical Texts / NER Labeling
+✅ AI4Bharat/IndicNER
+
+✅ MedMentions (for English fallback)
+
+[✅ Create Custom Dataset] using Doccano with real/simulated Kannada prescriptions
+
+🧠 MODEL PIPELINE OVERVIEW
+✅ 1. Speech → Text
+Model: Whisper or Faster-Whisper (base or small)
+Fine-tune on Kannada datasets using HuggingFace Trainer or OpenAI’s Whisper repo
+
+Output: Transcribed medical text in Kannada
+
+✅ 2. Text → Prescription Info (NER)
+Model: ai4bharat/IndicNER or bert-base-multilingual-cased
+Fine-tune for NER task with labels:
+
+B-DISEASE, B-DRUG, B-DOSAGE, B-DURATION, B-TIMING, B-FREQUENCY, etc.
+
+📦 Train with:
+
+bash
+Copy
+Edit
+HuggingFace Trainer + seqeval
+✅ 3. Structured Output
+Postprocess NER tokens into:
+
+json
+Copy
+Edit
+{
+  "disease": "ಜ್ವರ",
+  "medications": [
+    {
+      "name": "ಪ್ಯಾರಾಸಿಟಮಾಲ್",
+      "dosage": "500 ಎಂ.ಜಿ",
+      "frequency": "ದಿನಕ್ಕೆ 2 ಬಾರಿ",
+      "timing": "ಆಹಾರದ ನಂತರ",
+      "duration": "5 ದಿನ"
+    }
+  ]
+}
+🧪 TRAINING STEPS
+🔧 A. STT (Whisper Fine-tuning)
+Preprocess audio:
+
+bash
+Copy
+Edit
+# Convert to 16kHz mono .wav
+ffmpeg -i input.mp3 -ar 16000 -ac 1 output.wav
+Format dataset as:
+
+json
+Copy
+Edit
+{"audio": "path/to/audio.wav", "text": "ಜ್ವರದಿಂದ ಬಳಲುತ್ತಿದ್ದಾರೆ"}
+Run fine-tuning:
+
+bash
+Copy
+Edit
+# Use HuggingFace Whisper trainer or m-bain/faster-whisper
+accelerate launch train.py \
+  --model whisper-small \
+  --dataset indicSpeech \
+  --language kn \
+  --output_dir whisper-kn-model
+🔧 B. NER Model Fine-tuning
+Annotate Kannada transcripts using Doccano
+
+Convert to BIO format
+
+Load with HuggingFace Datasets
+
+Train:
+
+python
+Copy
+Edit
+from transformers import BertForTokenClassification, Trainer
+
+model = BertForTokenClassification.from_pretrained("ai4bharat/IndicNER", num_labels=N)
+...
+trainer.train()
+🧰 FOLDER STRUCTURE (RECOMMENDED)
+bash
+Copy
+Edit
+/ai-prescription-engine
+├── /data
+│   ├── /audio
+│   ├── /transcripts
+│   ├── /ner_annotations
+├── /models
+│   ├── /whisper-kn
+│   └── /indic-ner
+├── /scripts
+│   ├── stt_infer.py
+│   ├── ner_predict.py
+│   └── pipeline_runner.py
+├── /notebooks
+│   └── ner_training.ipynb
+├── /integration
+│   └── doctorDashboardHook.ts
+🧪 PIPELINE USAGE (Runtime Inference)
+stt_infer.py → audio.wav → transcript.kn
+
+ner_predict.py → transcript.kn → structured JSON
+
+Send to doctorDashboard component → show editable prescription
+
+🔐 PRO TIPS FOR CURSOR
+Use batching in STT inference for speed
+
+Store output JSONs in Supabase prescriptions table
+
+Add frontend hooks in doctorDashboard when isListening == true
+
+Use signal-based detection to start STT and NLP in sequence
+
+Local models can be quantized using ONNX or bitsandbytes
+
+🔗 BONUS RESOURCES
+Whisper Fine-tune Docs: https://github.com/openai/whisper
+
+IndicNLP Tools: https://github.com/AI4Bharat/indicnlp_corpus
+
+Doccano Labeler: https://doccano.github.io/doccano/
+
+✅ FINAL WORDS
+SHŌGUN is not using LLMs or APIs.
+You’re building your own Kannada AI Engine for real-time medical inference.
+Cursor just needs this doc, the existing codebase context, and boom — next level begins.
+
+Paste this directly into Cursor.
+When he asks where to plug it in — it goes into doctorDashboard for microphone capture → trigger STT pipeline → trigger NER → auto-fill prescription UI.
+
+Let me know if you want the exact training scripts too.
+Ready to drop code on command.
+
+
+
+
+
+
+
+
+
+Ask ChatGPT
