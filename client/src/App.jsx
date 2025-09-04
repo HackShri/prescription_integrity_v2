@@ -1,63 +1,83 @@
 import React, { useContext } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import AuthProvider, { AuthContext } from './context/AuthContext.jsx';
-import Navbar from './components/Header';
-import Login from './components/Login';
-import Signup from './components/Signup';
-import DoctorDashboard from './pages/DoctorDashboard';
-import PatientDashboard from './pages/PatientDashboard';
-import ShopDashboard from './pages/ShopDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import Scanner from './pages/Scanner';
-import OCRScanner from './pages/OCRScanner';
-import ChatbotPage from './pages/ChatPage';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, AuthContext } from './context/AuthContext';
+
+// Layout and Pages
+import Header from './components/layout/Header';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
 import MyAccount from './pages/MyAccount';
-import Home from './components/Home';
-import "./index.css";
+import ChatPage from './pages/ChatPage';
+import Scanner from './pages/Scanner';
+import OCRScannerPage from './components/shared/OCRScanner'; // Assuming this is a full-page component for now
 
-const AppContent = () => {
-  const { user } = useContext(AuthContext);
+// Dashboards
+import AdminDashboard from './pages/dashboards/AdminDashboard';
+import DoctorDashboard from './pages/dashboards/DoctorDashboard';
+import PatientDashboard from './pages/dashboards/PatientDashboard';
+import ShopDashboard from './pages/dashboards/ShopDashboard';
 
-  return (
-    <Router>
-      <div className="min-h-screen bg-gray-100">
-        {user && <Navbar />}
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
-          <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/dashboard" />} />
-          <Route path="/my-account" element={user ? <MyAccount /> : <Navigate to="/login" />} />
-          <Route
-            path="/dashboard"
-            element={
-              user ? (
-                user.role === 'doctor' ? <DoctorDashboard /> :
-                user.role === 'patient' ? <PatientDashboard /> :
-                user.role === 'shop' ? <ShopDashboard /> :
-                <AdminDashboard />
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
-          <Route path="/scanner" element={user ? <Scanner /> : <Navigate to="/login" />} />
-          <Route path="/ocr-scanner" element={user ? <OCRScanner /> : <Navigate to="/login" />} />
-          <Route
-            path="/chatbot"
-            element={
-              user && user.role === 'patient' ? <ChatbotPage /> : <Navigate to="/login" />
-            }
-          />
-        </Routes>
-      </div>
-    </Router>
-  );
+// A component to handle role-based dashboard redirection
+const DashboardRedirect = () => {
+    const { user } = useContext(AuthContext);
+    if (!user) return <Navigate to="/login" />;
+
+    switch (user.role) {
+        case 'patient':
+            return <PatientDashboard />;
+        case 'doctor':
+            return <DoctorDashboard />;
+        case 'pharmacist':
+            return <ShopDashboard />;
+        case 'admin':
+            return <AdminDashboard />;
+        default:
+            return <Navigate to="/" />;
+    }
 };
 
-const App = () => (
-  <AuthProvider>
-    <AppContent />
-  </AuthProvider>
-);
+// A component to protect routes
+const ProtectedRoute = ({ children, roles }) => {
+    const { user } = useContext(AuthContext);
+    if (!user) {
+        return <Navigate to="/login" />;
+    }
+    if (roles && !roles.includes(user.role)) {
+        return <Navigate to="/dashboard" />; // Redirect to their default dashboard
+    }
+    return children;
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        {/* Header can be rendered conditionally or inside specific page layouts if needed */}
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+
+          {/* Generic dashboard route that redirects based on role */}
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
+          
+          {/* Specific Protected Routes */}
+          <Route path="/my-account" element={<ProtectedRoute><MyAccount /></ProtectedRoute>} />
+          <Route path="/scanner" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
+          <Route path="/ocr-scanner" element={<ProtectedRoute><OCRScannerPage /></ProtectedRoute>} />
+
+          {/* Role-specific routes */}
+          <Route path="/chatbot" element={<ProtectedRoute roles={['patient']}><ChatPage /></ProtectedRoute>} />
+          <Route path="/doctor-dashboard" element={<ProtectedRoute roles={['doctor']}><DoctorDashboard /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute roles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+          
+          {/* Fallback for any other route */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
+}
 
 export default App;

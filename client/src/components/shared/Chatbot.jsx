@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { postChatMessage } from '../../api/prescriptionService';
 import { Send, Bot, User, Sparkles, Brain } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 
 const Chatbot = () => {
   const [messages, setMessages] = useState([
@@ -36,9 +36,9 @@ const Chatbot = () => {
     setIsLoading(true);
 
     try {
-      const { data } = await axios.post('http://localhost:5000/api/chat', {
-        messages: [...messages, userMessage].map(msg => ({ role: msg.role, content: msg.content })),
-      });
+      const { data } = await postChatMessage(
+        [...messages, userMessage].map(msg => ({ role: msg.role, content: msg.content }))
+      );
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -168,7 +168,7 @@ const Chatbot = () => {
         
         {/* Quick Suggestions */}
         <div className="max-w-4xl mx-auto mt-3 flex flex-wrap gap-2">
-          {['Medication interactions', 'Side effects', 'Dosage information', 'Health tips'].map((suggestion, index) => (
+          {['Medication interactions', 'Side effects', 'Dosage information', 'Health tips'].map((suggestion) => (
             <button
               key={suggestion}
               onClick={() => setInputMessage(suggestion)}

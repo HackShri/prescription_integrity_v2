@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import jsQR from 'jsqr';
-import axios from 'axios';
+import { getPrescriptionById } from '../api/prescriptionService';
 import { QrCode } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -44,7 +44,7 @@ const Scanner = () => {
           try {
             const data = JSON.parse(code.data);
             fetchPrescription(data.prescriptionId);
-            setIsScanning(false); // Stop scanning after success
+            setIsScanning(false);
           } catch (err) {
             setError('Invalid QR code format');
           }
@@ -55,7 +55,7 @@ const Scanner = () => {
 
     const delayScanner = setTimeout(() => {
       startScanner();
-    }, 2000);
+    }, 1000);
 
     return () => {
       clearTimeout(delayScanner);
@@ -68,10 +68,7 @@ const Scanner = () => {
 
   const fetchPrescription = async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      const { data } = await axios.get(`http://localhost:5000/api/prescriptions/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data } = await getPrescriptionById(id);
       setScannedPrescription(data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch prescription');
@@ -105,7 +102,7 @@ const Scanner = () => {
             <div className="mt-4 space-y-2">
               <p><strong>Patient Email:</strong> {scannedPrescription.patientEmail}</p>
               <p><strong>Instructions:</strong> {scannedPrescription.instructions}</p>
-                              <div>
+              <div>
                   <p><strong>Medications:</strong></p>
                   {scannedPrescription.medications && scannedPrescription.medications.length > 0 ? (
                     scannedPrescription.medications.map((med, index) => (

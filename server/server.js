@@ -5,6 +5,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('../server/config/db');
 const path = require('path');
+const transcribeRotes = require("./routes/transcribe.js")
+
 
 dotenv.config();
 const app = express();
@@ -35,7 +37,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/prescriptions', require('./routes/prescriptions'));
 app.use('/api/pill-schedule', require('./routes/pillSchedule'));
 app.use('/api/chat', require('./routes/chatbot'));
-
+//app.use("/api",transcribeRotes)
 
 
 // ✅ Create HTTP server and Socket.IO with correct CORS

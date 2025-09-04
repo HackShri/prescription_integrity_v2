@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, X, CheckCircle, AlertTriangle, FileText, Pill } from 'lucide-react';
-import axios from 'axios';
+import { Bell, X, FileText, Pill, AlertTriangle } from 'lucide-react';
+import { fetchNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../../api/authService'; // This import now works
 import io from 'socket.io-client';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
+import { Button } from '../ui/button';
 
 const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
@@ -11,9 +10,8 @@ const NotificationBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    fetchNotifications();
+    loadNotifications();
     
-    // Set up socket listener for real-time notifications
     const socket = io('http://localhost:5000');
     if (socket) {
       socket.on('notification', (notification) => {
@@ -29,12 +27,10 @@ const NotificationBell = () => {
     };
   }, []);
 
-  const fetchNotifications = async () => {
+  const loadNotifications = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/auth/notifications', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Use the service function
+      const response = await fetchNotifications();
       setNotifications(response.data);
       setUnreadCount(response.data.filter(n => !n.read).length);
     } catch (error) {
@@ -42,13 +38,10 @@ const NotificationBell = () => {
     }
   };
 
-  const markAsRead = async (notificationId) => {
+  const handleMarkAsRead = async (notificationId) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:5000/api/auth/notifications/${notificationId}/read`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
+      // Use the service function
+      await markNotificationAsRead(notificationId);
       setNotifications(prev => 
         prev.map(n => n._id === notificationId ? { ...n, read: true } : n)
       );
@@ -58,13 +51,10 @@ const NotificationBell = () => {
     }
   };
 
-  const markAllAsRead = async () => {
+  const handleMarkAllAsRead = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.patch('http://localhost:5000/api/auth/notifications/read-all', {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
+      // Use the service function
+      await markAllNotificationsAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
@@ -122,7 +112,7 @@ const NotificationBell = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={markAllAsRead}
+                    onClick={handleMarkAllAsRead}
                     className="text-xs text-blue-600 hover:text-blue-800"
                   >
                     Mark all read
@@ -170,7 +160,7 @@ const NotificationBell = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => markAsRead(notification._id)}
+                        onClick={() => handleMarkAsRead(notification._id)}
                         className="text-xs text-blue-600 hover:text-blue-800"
                       >
                         Mark read

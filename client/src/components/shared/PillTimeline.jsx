@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { getPillSchedule, addPillToSchedule, togglePillTakenStatus } from '../../api/prescriptionService';
 import { Plus, Check, Clock } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import io from 'socket.io-client';
 
 const socket = io('http://localhost:5000');
@@ -27,9 +27,7 @@ const PillTimeline = () => {
 
     const fetchSchedule = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5000/api/pill-schedule', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const { data } = await getPillSchedule();
         setPills(data.schedule.filter(p => p.date === selectedDate));
       } catch (error) {
         console.error('Error fetching schedule:', error);
@@ -37,12 +35,11 @@ const PillTimeline = () => {
     };
     fetchSchedule();
 
-    // WebSocket listener for pill notifications
     const user = JSON.parse(atob(token.split('.')[1]));
     socket.emit('joinRoom', user.userId);
     socket.on('pillNotification', (data) => {
       setNotification(data.message);
-      setTimeout(() => setNotification(''), 5000); // Clear after 5 seconds
+      setTimeout(() => setNotification(''), 5000);
     });
 
     return () => {
@@ -50,7 +47,6 @@ const PillTimeline = () => {
     };
   }, [selectedDate]);
 
-  // Handle click outside modal
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
@@ -72,12 +68,7 @@ const PillTimeline = () => {
   const addPill = async () => {
     if (!pillName || !pillTime) return;
     try {
-      const token = localStorage.getItem('token');
-      const { data } = await axios.post(
-        'http://localhost:5000/api/pill-schedule',
-        { date: selectedDate, name: pillName, time: pillTime },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await addPillToSchedule({ date: selectedDate, name: pillName, time: pillTime });
       setPills(data.schedule.filter(p => p.date === selectedDate));
       setPillName('');
       setPillTime('');
@@ -91,12 +82,7 @@ const PillTimeline = () => {
 
   const togglePillTaken = async (pillId) => {
     try {
-      const token = localStorage.getItem('token');
-      const { data } = await axios.patch(
-        `http://localhost:5000/api/pill-schedule/${pillId}/toggle`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await togglePillTakenStatus(pillId);
       setPills(data.schedule.filter(p => p.date === selectedDate));
     } catch (error) {
       console.error('Error toggling pill:', error);

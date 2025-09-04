@@ -3,28 +3,26 @@ import { useEffect, useState } from 'react';
 const useSpeechRecognition = () => {
   const [transcript, setTranscript] = useState('');
   const [listening, setListening] = useState(false);
+  const [recognition, setRecognition] = useState(null);
 
-  let recognition;
+  useEffect(() => {
+    if (!('webkitSpeechRecognition' in window)) {
+      console.error('Speech recognition not supported in this browser.');
+      return;
+    }
 
-  if ('webkitSpeechRecognition' in window) {
     const SpeechRecognition = window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-  }
+    const recognitionInstance = new SpeechRecognition();
+    recognitionInstance.continuous = false;
+    recognitionInstance.interimResults = true;
+    recognitionInstance.lang = 'en-US';
+    
+    setRecognition(recognitionInstance);
 
-  const startListening = () => {
-    if (!recognition) return;
-    recognition.start();
-    setListening(true);
-  };
-
-  const stopListening = () => {
-    if (!recognition) return;
-    recognition.stop();
-    setListening(false);
-  };
+    return () => {
+      recognitionInstance.stop();
+    };
+  }, []);
 
   useEffect(() => {
     if (!recognition) return;
@@ -44,11 +42,22 @@ const useSpeechRecognition = () => {
     recognition.onend = () => {
       setListening(false);
     };
+  }, [recognition]);
 
-    return () => {
+  const startListening = () => {
+    if (recognition && !listening) {
+      setTranscript('');
+      recognition.start();
+      setListening(true);
+    }
+  };
+
+  const stopListening = () => {
+    if (recognition && listening) {
       recognition.stop();
-    };
-  }, []);
+      setListening(false);
+    }
+  };
 
   return {
     transcript,

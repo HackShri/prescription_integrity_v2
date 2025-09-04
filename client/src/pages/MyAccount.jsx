@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { fetchCurrentUser } from '../api/authService';
 import { Button } from '../components/ui/button';
-import Navbar from '../components/Header';
+import Header from '../components/layout/Header';
 
 const MyAccount = () => {
   const [user, setUser] = useState(null);
@@ -11,13 +11,8 @@ const MyAccount = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (token) {
-          const { data } = await axios.get('http://localhost:5000/api/auth/me', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setUser(data);
-        }
+        const { data } = await fetchCurrentUser();
+        setUser(data);
       } catch (error) {
         console.error('Error fetching user:', error);
       }
@@ -29,7 +24,7 @@ const MyAccount = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+      <Header />
       <main className="p-6 max-w-4xl mx-auto">
         <h2 className="text-3xl font-bold mb-6">My Account</h2>
         <div className="bg-white p-6 rounded-lg shadow-md">
@@ -45,7 +40,7 @@ const MyAccount = () => {
               <img src={user.photo} alt="Profile" className="w-32 h-32 object-cover rounded-full" />
             </div>
           )}
-          <Button onClick={() => navigate('/')} className="mt-6">
+          <Button onClick={() => navigate('/dashboard')} className="mt-6">
             Back to Dashboard
           </Button>
         </div>

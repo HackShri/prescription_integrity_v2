@@ -1,25 +1,23 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext.jsx';
-import { Button } from './ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
-import { 
-  Menu, 
-  User, 
-  LogOut, 
-  Home, 
-  LayoutDashboard, 
-  Settings, 
-  UserCircle,
+import { AuthContext } from '../../context/AuthContext.jsx';
+import { Button } from '../ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet';
+import {
+  Menu,
+  User,
+  LogOut,
+  Home,
+  LayoutDashboard,
   MessageCircle,
   QrCode,
-  Pill,
+  UserCircle,
   Users
 } from 'lucide-react';
 import Headroom from 'react-headroom';
-import NotificationBell from './NotificationBell';
+import NotificationBell from '../shared/NotificationBell';
 
-const Navbar = () => {
+const Header = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -47,7 +45,6 @@ const Navbar = () => {
           href: '/dashboard',
           show: true
         },
-
         {
           icon: <MessageCircle className="h-5 w-5" />,
           label: 'AI Assistant',
@@ -87,17 +84,17 @@ const Navbar = () => {
             <div className="flex items-center">
               <Sheet open={isOpen} onOpenChange={setIsOpen}>
                 <SheetTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="mr-4 hover:bg-gray-100 rounded-xl transition-all duration-200"
                     aria-label="Open menu"
                   >
                     <Menu className="h-6 w-6" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent 
-                  side="left" 
+                <SheetContent
+                  side="left"
                   className="w-[280px] sm:w-[320px] bg-white/95 backdrop-blur-md border-r border-gray-200"
                 >
                   <SheetHeader className="pb-6 border-b border-gray-200">
@@ -123,7 +120,7 @@ const Navbar = () => {
                     <ul className="space-y-2">
                       {getNavigationItems().map((item, index) => (
                         <li key={index}>
-                          <Link 
+                          <Link
                             to={item.href}
                             className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-all duration-200 group"
                             onClick={() => setIsOpen(false)}
@@ -170,8 +167,8 @@ const Navbar = () => {
                     <span className="text-lg">{user.role === 'patient' ? '👤' : user.role === 'doctor' ? '👨‍⚕️' : user.role === 'pharmacist' ? '💊' : '🔧'}</span>
                     <span className="text-sm font-medium capitalize text-gray-700">{user.role}</span>
                   </div>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="button-secondary"
                     onClick={handleLogout}
                   >
@@ -181,15 +178,15 @@ const Navbar = () => {
                 </>
               ) : (
                 <>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="button-secondary"
                     onClick={() => navigate('/login')}
                   >
                     <User className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">Login</span>
                   </Button>
-                  <Button 
+                  <Button
                     className="button-style"
                     onClick={() => navigate('/signup')}
                   >
@@ -206,4 +203,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar;
+export default Header;

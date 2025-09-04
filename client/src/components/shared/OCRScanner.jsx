@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createWorker } from 'tesseract.js';
-import { FileText, Camera, Upload, RotateCcw, CheckCircle, AlertTriangle, Copy, Send } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
+import { FileText, Camera, Upload, RotateCcw, CheckCircle, AlertTriangle, Send } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
+import { Alert, AlertDescription } from '../ui/alert';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 import { useNavigate } from 'react-router-dom';
 
 const OCRScanner = () => {
@@ -32,7 +32,6 @@ const OCRScanner = () => {
   const videoRef = useRef(null);
   const navigate = useNavigate();
 
-  // Cleanup camera on unmount
   useEffect(() => {
     return () => {
       stopCamera();
@@ -73,7 +72,7 @@ const OCRScanner = () => {
   const startCamera = async () => {
     try {
       setError('');
-      stopCamera(); // Stop any existing stream
+      stopCamera();
       
       const constraints = {
         video: {
@@ -88,12 +87,10 @@ const OCRScanner = () => {
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        
         videoRef.current.onloadedmetadata = () => {
           videoRef.current.play();
           setIsCameraActive(true);
         };
-        
         videoRef.current.onerror = (err) => {
           console.error('Video error:', err);
           setError('Failed to start camera video feed');
@@ -127,17 +124,12 @@ const OCRScanner = () => {
     setError('');
 
     try {
-      // Create worker with better configuration
       const worker = await createWorker();
-      
-      // Initialize with English language and better settings
       await worker.loadLanguage('eng');
       await worker.initialize('eng');
-      
-      // Set parameters for better accuracy
       await worker.setParameters({
         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,;:()[]{}@#$%&*+-=/\\|<>?!"\'`~ ',
-        tessedit_pageseg_mode: '6', // Uniform block of text
+        tessedit_pageseg_mode: '6',
         preserve_interword_spaces: '1',
       });
 
@@ -146,8 +138,6 @@ const OCRScanner = () => {
 
       setExtractedText(text);
       setSuccess('Text extracted successfully! Review and edit the extracted information.');
-      
-      // Auto-parse the extracted text
       parsePrescriptionText(text);
     } catch (err) {
       console.error('OCR Error:', err);
@@ -161,7 +151,6 @@ const OCRScanner = () => {
     const lines = text.split('\n').map(line => line.trim()).filter(line => line);
     const lowerText = text.toLowerCase();
     
-    // Initialize parsed data
     const parsedData = {
       patientEmail: '',
       patientMobile: '',
@@ -174,42 +163,30 @@ const OCRScanner = () => {
       expiresAt: ''
     };
 
-    // Extract email
     const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
     const emails = text.match(emailRegex);
     if (emails && emails.length > 0) {
       parsedData.patientEmail = emails[0];
     }
 
-    // Extract mobile number
     const mobileRegex = /(\+?[\d\s\-\(\)]{10,})/g;
     const mobiles = text.match(mobileRegex);
     if (mobiles && mobiles.length > 0) {
       parsedData.patientMobile = mobiles[0].replace(/\s+/g, '');
     }
 
-    // Extract age
     const ageRegex = /(\d+)\s*(?:years?|yrs?|y)/i;
     const ageMatch = lowerText.match(ageRegex);
-    if (ageMatch) {
-      parsedData.age = ageMatch[1];
-    }
+    if (ageMatch) parsedData.age = ageMatch[1];
 
-    // Extract weight
     const weightRegex = /(\d+(?:\.\d+)?)\s*(?:kg|kgs|kilograms?)/i;
     const weightMatch = lowerText.match(weightRegex);
-    if (weightMatch) {
-      parsedData.weight = weightMatch[1];
-    }
+    if (weightMatch) parsedData.weight = weightMatch[1];
 
-    // Extract height
     const heightRegex = /(\d+(?:\.\d+)?)\s*(?:cm|cms|centimeters?)/i;
     const heightMatch = lowerText.match(heightRegex);
-    if (heightMatch) {
-      parsedData.height = heightMatch[1];
-    }
+    if (heightMatch) parsedData.height = heightMatch[1];
 
-    // Extract medications with dosage and instructions
     const medications = [];
     const medicationPatterns = [
       /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*(\d+(?:\.\d+)?\s*(?:mg|ml|g|tablets?|capsules?|syrup))/gi,
@@ -228,102 +205,11 @@ const OCRScanner = () => {
           duration: '',
           instructions: ''
         };
-
-        // Look for quantity in nearby lines
-        const lineIndex = lines.findIndex(line => line.includes(match[0]));
-        if (lineIndex !== -1) {
-          const nearbyLines = lines.slice(Math.max(0, lineIndex - 2), lineIndex + 3);
-          const quantityMatch = nearbyLines.join(' ').match(/(\d+)\s*(?:tablets?|capsules?|pills?|bottles?)/i);
-          if (quantityMatch) {
-            medication.quantity = quantityMatch[1];
-          }
-        }
-
         medications.push(medication);
       }
     });
 
-    // Extract frequency and timing
-    const frequencyPatterns = [
-      /(once|twice|thrice|four times)\s+(daily|a day|per day)/gi,
-      /(every\s+\d+\s+hours?)/gi,
-      /(\d+\s+times?\s+(?:daily|a day|per day))/gi
-    ];
-
-    const timingPatterns = [
-      /(before|after)\s+(breakfast|lunch|dinner|meals?)/gi,
-      /(at\s+bedtime)/gi,
-      /(on\s+empty\s+stomach)/gi,
-      /(with\s+meals?)/gi
-    ];
-
-    // Extract duration
-    const durationPatterns = [
-      /(\d+\s+(?:days?|weeks?|months?))/gi,
-      /(until\s+finished)/gi,
-      /(as\s+needed)/gi
-    ];
-
-    // Apply patterns to medications
-    medications.forEach(med => {
-      const medText = text.toLowerCase();
-      
-      // Find frequency
-      for (const pattern of frequencyPatterns) {
-        const match = medText.match(pattern);
-        if (match) {
-          med.frequency = match[0];
-          break;
-        }
-      }
-
-      // Find timing
-      for (const pattern of timingPatterns) {
-        const match = medText.match(pattern);
-        if (match) {
-          med.timing = match[0];
-          break;
-        }
-      }
-
-      // Find duration
-      for (const pattern of durationPatterns) {
-        const match = medText.match(pattern);
-        if (match) {
-          med.duration = match[0];
-          break;
-        }
-      }
-    });
-
     parsedData.medications = medications;
-
-    // Extract general instructions
-    const instructionKeywords = ['take', 'use', 'apply', 'avoid', 'drink', 'eat', 'with', 'without'];
-    const instructionLines = lines.filter(line => {
-      const lowerLine = line.toLowerCase();
-      return instructionKeywords.some(keyword => lowerLine.includes(keyword));
-    });
-    parsedData.instructions = instructionLines.join('. ');
-
-    // Extract expiration date
-    const datePatterns = [
-      /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g,
-      /(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/g
-    ];
-
-    for (const pattern of datePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        // Convert to YYYY-MM-DD format for input
-        const date = new Date(match[0]);
-        if (!isNaN(date.getTime())) {
-          parsedData.expiresAt = date.toISOString().split('T')[0];
-          break;
-        }
-      }
-    }
-
     setPrescriptionData(parsedData);
   };
 
@@ -347,13 +233,7 @@ const OCRScanner = () => {
     setPrescriptionData(prev => ({
       ...prev,
       medications: [...prev.medications, {
-        name: '',
-        dosage: '',
-        quantity: '',
-        frequency: '',
-        timing: '',
-        duration: '',
-        instructions: ''
+        name: '', dosage: '', quantity: '', frequency: '', timing: '', duration: '', instructions: ''
       }]
     }));
   };
@@ -366,7 +246,6 @@ const OCRScanner = () => {
   };
 
   const copyToDoctorDashboard = () => {
-    // Store the parsed data in localStorage to be used in DoctorDashboard
     localStorage.setItem('ocrPrescriptionData', JSON.stringify(prescriptionData));
     navigate('/doctor-dashboard');
   };
@@ -377,15 +256,7 @@ const OCRScanner = () => {
     setError('');
     setSuccess('');
     setPrescriptionData({
-      patientEmail: '',
-      patientMobile: '',
-      instructions: '',
-      medications: [],
-      age: '',
-      weight: '',
-      height: '',
-      usageLimit: 1,
-      expiresAt: ''
+      patientEmail: '', patientMobile: '', instructions: '', medications: [], age: '', weight: '', height: '', usageLimit: 1, expiresAt: ''
     });
     stopCamera();
   };
@@ -414,7 +285,6 @@ const OCRScanner = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Image Upload/Capture Section */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -423,7 +293,6 @@ const OCRScanner = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Camera Capture */}
               <div className="space-y-2">
                 <Label>Camera Capture</Label>
                 <div className="space-y-2">
@@ -452,7 +321,6 @@ const OCRScanner = () => {
                 </div>
               </div>
 
-              {/* File Upload */}
               <div className="space-y-2">
                 <Label>Or Upload Image</Label>
                 <Input
@@ -464,7 +332,6 @@ const OCRScanner = () => {
                 />
               </div>
 
-              {/* Display Image */}
               {image && (
                 <div className="space-y-2">
                   <Label>Captured Image</Label>
@@ -485,7 +352,6 @@ const OCRScanner = () => {
             </CardContent>
           </Card>
 
-          {/* Extracted Text and Form Section */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -494,7 +360,6 @@ const OCRScanner = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Raw Extracted Text */}
               {extractedText && (
                 <div className="space-y-2">
                   <Label>Raw Extracted Text</Label>
@@ -504,7 +369,6 @@ const OCRScanner = () => {
                 </div>
               )}
 
-              {/* Prescription Form */}
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -534,7 +398,6 @@ const OCRScanner = () => {
                   />
                 </div>
 
-                {/* Medications */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <Label>Medications</Label>
@@ -567,37 +430,6 @@ const OCRScanner = () => {
                           placeholder="Dosage (e.g., 500mg)"
                           value={med.dosage}
                           onChange={(e) => handleMedicationChange(index, 'dosage', e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <Input
-                          placeholder="Quantity"
-                          value={med.quantity}
-                          onChange={(e) => handleMedicationChange(index, 'quantity', e.target.value)}
-                        />
-                        <Input
-                          placeholder="Frequency (e.g., twice daily)"
-                          value={med.frequency}
-                          onChange={(e) => handleMedicationChange(index, 'frequency', e.target.value)}
-                        />
-                        <Input
-                          placeholder="Timing (e.g., after meals)"
-                          value={med.timing}
-                          onChange={(e) => handleMedicationChange(index, 'timing', e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <Input
-                          placeholder="Duration (e.g., 7 days)"
-                          value={med.duration}
-                          onChange={(e) => handleMedicationChange(index, 'duration', e.target.value)}
-                        />
-                        <Input
-                          placeholder="Additional instructions"
-                          value={med.instructions}
-                          onChange={(e) => handleMedicationChange(index, 'instructions', e.target.value)}
                         />
                       </div>
                     </div>
@@ -674,4 +506,4 @@ const OCRScanner = () => {
   );
 };
 
-export default OCRScanner; 
+export default OCRScanner;

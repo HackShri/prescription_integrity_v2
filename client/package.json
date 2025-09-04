@@ -33,6 +33,7 @@
     "react-qr-code": "^2.0.15",
     "react-router-dom": "^7.6.2",
     "react-signature-canvas": "^1.1.0-alpha.2",
+    "recordrtc": "^5.6.2",
     "regenerator-runtime": "^0.14.1",
     "shadcn": "^2.7.0",
     "signature_pad": "^5.0.9",

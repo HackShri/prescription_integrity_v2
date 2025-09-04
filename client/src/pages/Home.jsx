@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
-import { Button } from './ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
+import { Button } from '../components/ui/button';
 
 const Home = () => {
   const features = [
@@ -45,14 +45,12 @@ const Home = () => {
 
   return (
     <div className="min-h-screen gradient-primary relative overflow-hidden">
-      {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
       </div>
 
-      {/* Header Section */}
       <header className="relative z-10 pt-8 pb-16 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 slide-in-top">
@@ -82,7 +80,6 @@ const Home = () => {
         </div>
       </header>
 
-      {/* Features Section */}
       <section className="relative z-10 py-16 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -116,7 +113,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="relative z-10 py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <Card className="glass p-12 slide-in-bottom">
@@ -146,7 +142,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="relative z-10 py-8 px-4 border-t border-gray-200">
         <div className="max-w-7xl mx-auto text-center">
           <p className="text-gray-600">
