@@ -1,7 +1,10 @@
 import axios from 'axios';
+// const dotenv = require('dotenv');
 
+
+// dotenv.config()
 const apiClient = axios.create({
-  baseURL: 'http://localhost:5000/api', // Your API base URL
+  baseURL: 'http://localhost:5000/api',// Your API base URL
   headers: {
     'Content-Type': 'application/json',
   },

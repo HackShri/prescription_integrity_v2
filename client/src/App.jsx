@@ -28,7 +28,7 @@ const DashboardRedirect = () => {
             return <PatientDashboard />;
         case 'doctor':
             return <DoctorDashboard />;
-        case 'pharmacist':
+        case 'shop':
             return <ShopDashboard />;
         case 'admin':
             return <AdminDashboard />;
