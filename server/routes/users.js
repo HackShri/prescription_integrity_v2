@@ -13,6 +13,27 @@ router.get('/', authMiddleware, roleMiddleware('admin'), async (req, res) => {
   }
 });
 
+router.get('find/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const use = await User.findOne({
+      $or:[{email: id }, { mobile:id}]
+    }).select('-password');
+
+    if(!user) {
+      return res.status(404).json({
+        message: 'User not found'
+      });
+
+      res.json(user);
+
+    }
+  } catch (err) {
+    res.status(500).json({ message:'Server error'})
+  }
+});
+
 router.patch('/verify/:id', authMiddleware, roleMiddleware('admin'), async (req, res) => {
   const { action } = req.body; // 'accept' or 'reject'
   try {
