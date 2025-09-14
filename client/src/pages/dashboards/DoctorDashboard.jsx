@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { QRCode } from 'react-qr-code';
 import SignatureCanvas from 'react-signature-canvas';
 import { createPrescription, transcribeAudio } from '../../api/prescriptionService';
+import { usePatientSearch } from '../../utils/patientUtils'; // Import the shared hook
 import {
   Mic,
   Plus,
@@ -16,7 +17,9 @@ import {
   CheckCircle,
   AlertTriangle,
   PenTool,
-  Send
+  Send,
+  Search,
+  Loader2
 } from 'lucide-react';
 import io from 'socket.io-client';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -25,6 +28,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { AlertDescription } from '../../components/ui/alert';
 import MedicationForm from '../../components/shared/MedicationForm';
+import PatientSearch from '../../components/shared/PatientSearch';
 import Header from '../../components/layout/Header';
 
 const socket = io('http://localhost:5000');
@@ -51,14 +55,39 @@ const DoctorDashboard = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
+  // Use the shared patient search hook
+  const {
+    searchId,
+    setSearchId,
+    patientData,
+    updatePatientData,
+    isLoading: isLoadingPatient,
+    error: patientError,
+    success: patientSuccess
+  } = usePatientSearch();
+
+  // Sync patient data with prescription state
   useEffect(() => {
-    const ocrData = localStorage.getItem('ocrPrescriptionData');
+    setPrescription(prev => ({
+      ...prev,
+      ...patientData
+    }));
+  }, [patientData]);
+
+  useEffect(() => {
+    // Check for OCR data or memory-stored data
+    const ocrData = localStorage.getItem('ocrPrescriptionData') || window.ocrPrescriptionData;
     if (ocrData) {
       try {
-        const parsedData = JSON.parse(ocrData);
+        const parsedData = typeof ocrData === 'string' ? JSON.parse(ocrData) : ocrData;
         setPrescription(parsedData);
         setIsCreating(true);
+        
+        // Clear the data after loading
         localStorage.removeItem('ocrPrescriptionData');
+        if (window.ocrPrescriptionData) {
+          delete window.ocrPrescriptionData;
+        }
       } catch (err) {
         console.error('Error parsing OCR data:', err);
       }
@@ -108,6 +137,21 @@ const DoctorDashboard = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setPrescription(prev => ({ ...prev, [name]: value }));
+    
+    // If patient email or mobile is changed, also update the search
+    if (name === 'patientEmail' || name === 'patientMobile') {
+      updatePatientData(name, value);
+    }
+  };
+
+  const handlePatientIdSearch = (value) => {
+    setSearchId(value);
+    // Also update the prescription field
+    if (value.includes('@')) {
+      setPrescription(prev => ({ ...prev, patientEmail: value }));
+    } else {
+      setPrescription(prev => ({ ...prev, patientMobile: value }));
+    }
   };
 
   const handleClearSignature = () => {
@@ -140,7 +184,7 @@ const DoctorDashboard = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken') || localStorage.getItem('token');
       const user = JSON.parse(atob(token.split('.')[1]));
       const payload = {
         ...prescription,
@@ -177,8 +221,13 @@ const DoctorDashboard = () => {
     setGeneratedPrescription(null);
     setSignature('');
     setError('');
+    setSearchId('');
     if(sigCanvasRef.current) sigCanvasRef.current.clear();
   };
+
+  // Combined error display
+  const displayError = error || patientError;
+  const displaySuccess = patientSuccess;
 
   return (
     <div className="min-h-screen gradient-secondary relative overflow-hidden">
@@ -197,12 +246,21 @@ const DoctorDashboard = () => {
           </p>
         </div>
 
-        {error && (
+        {displayError && (
           <div className="alert-error slide-in-top mb-6">
             <AlertDescription className="flex items-center">
               <AlertTriangle className="w-5 h-5 mr-2" />
-              {error}
+              {displayError}
             </AlertDescription>
+          </div>
+        )}
+
+        {displaySuccess && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg slide-in-top">
+            <div className="flex items-center text-green-800">
+              <CheckCircle className="w-5 h-5 mr-2" />
+              {displaySuccess}
+            </div>
           </div>
         )}
 
@@ -234,50 +292,176 @@ const DoctorDashboard = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Patient Search Section */}
+                <PatientSearch 
+                  onPatientFound={handlePatientIdSearch}
+                  placeholder="Enter patient email or mobile number..."
+                  className="p-4"
+                  showInstructions={true}
+                />
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="form-group">
-                    <Label htmlFor="patientEmail"><User className="w-4 h-4 inline mr-2" />Patient Email</Label>
-                    <Input id="patientEmail" name="patientEmail" type="email" placeholder="patient@example.com" value={prescription.patientEmail} onChange={handleChange} className="form-input" />
+                    <Label htmlFor="patientEmail">
+                      <User className="w-4 h-4 inline mr-2" />
+                      Patient Email
+                    </Label>
+                    <Input 
+                      id="patientEmail" 
+                      name="patientEmail" 
+                      type="email" 
+                      placeholder="patient@example.com" 
+                      value={prescription.patientEmail} 
+                      onChange={handleChange} 
+                      className="form-input"
+                    />
                   </div>
                   <div className="form-group">
-                    <Label htmlFor="patientMobile"><Phone className="w-4 h-4 inline mr-2" />Patient Mobile</Label>
-                    <Input id="patientMobile" name="patientMobile" type="tel" placeholder="+1234567890" value={prescription.patientMobile} onChange={handleChange} className="form-input" />
+                    <Label htmlFor="patientMobile">
+                      <Phone className="w-4 h-4 inline mr-2" />
+                      Patient Mobile
+                    </Label>
+                    <Input 
+                      id="patientMobile" 
+                      name="patientMobile" 
+                      type="tel" 
+                      placeholder="+1234567890" 
+                      value={prescription.patientMobile} 
+                      onChange={handleChange} 
+                      className="form-input"
+                    />
                   </div>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="form-group">
-                    <Label htmlFor="expiresAt"><Calendar className="w-4 h-4 inline mr-2" />Expiration Date</Label>
-                    <Input id="expiresAt" name="expiresAt" type="date" value={prescription.expiresAt} onChange={handleChange} className="form-input" required />
+                    <Label htmlFor="expiresAt">
+                      <Calendar className="w-4 h-4 inline mr-2" />
+                      Expiration Date
+                    </Label>
+                    <Input 
+                      id="expiresAt" 
+                      name="expiresAt" 
+                      type="date" 
+                      value={prescription.expiresAt} 
+                      onChange={handleChange} 
+                      className="form-input" 
+                      required 
+                    />
                   </div>
                   <div className="form-group">
-                    <Label htmlFor="usageLimit"><Clock className="w-4 h-4 inline mr-2" />Usage Limit</Label>
-                    <Input id="usageLimit" name="usageLimit" type="number" placeholder="1" value={prescription.usageLimit} onChange={handleChange} className="form-input" min="1" />
+                    <Label htmlFor="usageLimit">
+                      <Clock className="w-4 h-4 inline mr-2" />
+                      Usage Limit
+                    </Label>
+                    <Input 
+                      id="usageLimit" 
+                      name="usageLimit" 
+                      type="number" 
+                      placeholder="1" 
+                      value={prescription.usageLimit} 
+                      onChange={handleChange} 
+                      className="form-input" 
+                      min="1" 
+                    />
                   </div>
                 </div>
+
                 <div className="form-group">
-                  <Label htmlFor="instructions"><FileText className="w-4 h-4 inline mr-2" />General Instructions</Label>
+                  <Label htmlFor="instructions">
+                    <FileText className="w-4 h-4 inline mr-2" />
+                    General Instructions
+                  </Label>
                   <div className="flex space-x-2">
-                    <Input id="instructions" name="instructions" placeholder="Enter instructions..." value={prescription.instructions} onChange={handleChange} className="form-input flex-1" />
+                    <Input 
+                      id="instructions" 
+                      name="instructions" 
+                      placeholder="Enter instructions..." 
+                      value={prescription.instructions} 
+                      onChange={handleChange} 
+                      className="form-input flex-1" 
+                    />
                     <Button type="button" variant="outline" size="icon" onClick={handleVoiceInput} className="w-12 h-12">
                         {isListening ? <Mic className="h-4 w-4 animate-pulse text-red-500" /> : <Mic className="h-4 w-4" />}
                     </Button>
                   </div>
                 </div>
-                <MedicationForm medications={prescription.medications} onMedicationsChange={handleMedicationsChange} />
+
+                <MedicationForm 
+                  medications={prescription.medications} 
+                  onMedicationsChange={handleMedicationsChange} 
+                />
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="form-group"><Label htmlFor="age">Age</Label><Input id="age" name="age" type="number" placeholder="Age" value={prescription.age} onChange={handleChange} className="form-input"/></div>
-                  <div className="form-group"><Label htmlFor="weight">Weight (kg)</Label><Input id="weight" name="weight" type="number" placeholder="Weight" value={prescription.weight} onChange={handleChange} className="form-input"/></div>
-                  <div className="form-group"><Label htmlFor="height">Height (cm)</Label><Input id="height" name="height" type="number" placeholder="Height" value={prescription.height} onChange={handleChange} className="form-input"/></div>
-                </div>
-                <div className="form-group">
-                  <Label><PenTool className="w-4 h-4 inline mr-2" />Digital Signature</Label>
-                  <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
-                    <SignatureCanvas ref={sigCanvasRef} canvasProps={{ className: 'w-full h-32 border border-gray-300 rounded' }} onEnd={handleEndSignature}/>
-                    <Button type="button" onClick={handleClearSignature} variant="outline" size="sm" className="mt-2">Clear</Button>
+                  <div className="form-group">
+                    <Label htmlFor="age">Age (years)</Label>
+                    <Input 
+                      id="age" 
+                      name="age" 
+                      type="number" 
+                      placeholder="Age" 
+                      value={prescription.age} 
+                      onChange={handleChange} 
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <Label htmlFor="weight">Weight (kg)</Label>
+                    <Input 
+                      id="weight" 
+                      name="weight" 
+                      type="number" 
+                      step="0.1"
+                      placeholder="Weight" 
+                      value={prescription.weight} 
+                      onChange={handleChange} 
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <Label htmlFor="height">Height (cm)</Label>
+                    <Input 
+                      id="height" 
+                      name="height" 
+                      type="number" 
+                      step="0.1"
+                      placeholder="Height" 
+                      value={prescription.height} 
+                      onChange={handleChange} 
+                      className="form-input"
+                    />
                   </div>
                 </div>
+
+                <div className="form-group">
+                  <Label>
+                    <PenTool className="w-4 h-4 inline mr-2" />
+                    Digital Signature
+                  </Label>
+                  <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
+                    <SignatureCanvas 
+                      ref={sigCanvasRef} 
+                      canvasProps={{ className: 'w-full h-32 border border-gray-300 rounded' }} 
+                      onEnd={handleEndSignature}
+                    />
+                    <Button type="button" onClick={handleClearSignature} variant="outline" size="sm" className="mt-2">
+                      Clear Signature
+                    </Button>
+                  </div>
+                </div>
+
                 <Button type="submit" className="w-full button-secondary h-12 text-lg" disabled={isSubmitting}>
-                  {isSubmitting ? 'Creating...' : <><Send className="w-5 h-5 mr-2" />Generate Prescription</>}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Creating Prescription...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5 mr-2" />
+                      Generate Prescription
+                    </>
+                  )}
                 </Button>
               </form>
             </CardContent>
@@ -293,20 +477,40 @@ const DoctorDashboard = () => {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                    <p>Patient Email: {generatedPrescription.patientEmail}</p>
-                    <p>Medications:</p>
-                    {generatedPrescription.medications.map((med, index) => <div key={index}><p>{med.name} - {med.dosage}</p></div>)}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-medium mb-2">Patient Information</h4>
+                      <p><strong>Email:</strong> {generatedPrescription.patientEmail}</p>
+                      <p><strong>Mobile:</strong> {generatedPrescription.patientMobile}</p>
+                      {generatedPrescription.age && <p><strong>Age:</strong> {generatedPrescription.age} years</p>}
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-medium mb-2">Medications</h4>
+                      {generatedPrescription.medications.map((med, index) => (
+                        <div key={index} className="mb-2 p-2 bg-white rounded">
+                          <p className="font-medium">{med.name} - {med.dosage}</p>
+                          {med.frequency && <p className="text-sm text-gray-600">Frequency: {med.frequency}</p>}
+                        </div>
+                      ))}
+                    </div>
                 </div>
                 <div className="flex flex-col items-center">
-                    <p>QR Code</p>
+                    <h4 className="font-medium mb-4">Prescription QR Code</h4>
                     <div className="bg-white p-4 rounded-lg shadow-lg">
                         <QRCode value={generateQRValue(generatedPrescription)} size={150}/>
                     </div>
+                    <p className="text-sm text-gray-600 mt-2 text-center">
+                      Scan this QR code to verify the prescription
+                    </p>
                 </div>
               </div>
               <div className="flex space-x-4">
-                <Button onClick={resetForm} className="flex-1 button-style">Create Another</Button>
-                <Button variant="outline" className="flex-1" onClick={() => window.print()}><Download className="w-4 h-4 mr-2" />Print</Button>
+                <Button onClick={resetForm} className="flex-1 button-style">
+                  Create Another Prescription
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={() => window.print()}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Print Prescription
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, Camera, Upload, RotateCcw, CheckCircle, AlertTriangle, Send } from 'lucide-react';
+import { FileText, Camera, Upload, RotateCcw, CheckCircle, AlertTriangle, Send, Search, Loader2 } from 'lucide-react';
+import { usePatientSearch } from '../../utils/patientUtils';
+import PatientSearch from './PatientSearch';
 
 const OCRScanner = () => {
   const [image, setImage] = useState(null);
-  const [searchId, setSearchId] = useState("");
   const [extractedText, setExtractedText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -22,8 +23,27 @@ const OCRScanner = () => {
     expiresAt: ''
   });
 
+  // Use the shared patient search hook
+  const {
+    searchId,
+    setSearchId,
+    patientData,
+    updatePatientData,
+    isLoading: isLoadingPatient,
+    error: patientError,
+    success: patientSuccess
+  } = usePatientSearch();
+
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
+
+  // Sync patient data with prescription state
+  useEffect(() => {
+    setPrescriptionData(prev => ({
+      ...prev,
+      ...patientData
+    }));
+  }, [patientData]);
 
   useEffect(() => {
     return () => {
@@ -498,55 +518,28 @@ const OCRScanner = () => {
     }
   };
 
-  // Debounce effect for patient search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchId && searchId.length > 3) {
-        fetchPatientDetails(searchId);
-      }
-    }, 800); // Increased delay to 800ms
-
-    return () => clearTimeout(timer);
-  }, [searchId]);
-
-  const fetchPatientDetails = async (id) => {
-    try {
-      setError("");
-      const token = localStorage.getItem('authToken'); // Get your actual token
-
-      const response = await fetch(`http://localhost:5000/api/users/find/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setPrescriptionData(prev => ({
-        ...prev,
-        patientEmail: data.email || prev.patientEmail,
-        patientMobile: data.mobile || prev.patientMobile,
-        age: data.age || prev.age,
-        weight: data.weight || prev.weight,
-        height: data.height || prev.height
-      }));
-
-      setSuccess("Patient details fetched successfully!");
-    } catch (err) {
-      console.error("Fetch error:", err);
-      setError(`Failed to fetch patient data: ${err.message}`);
-    }
-  };
+  // Patient search functionality is now handled by the shared hook
 
   const handleInputChange = (field, value) => {
     setPrescriptionData(prev => ({
       ...prev,
       [field]: value
     }));
+    
+    // Also update the shared patient search if it's a patient field
+    if (field === 'patientEmail' || field === 'patientMobile') {
+      updatePatientData(field, value);
+    }
+  };
+
+  const handlePatientIdSearch = (value) => {
+    setSearchId(value);
+    // Also update the prescription field
+    if (value.includes('@')) {
+      setPrescriptionData(prev => ({ ...prev, patientEmail: value }));
+    } else {
+      setPrescriptionData(prev => ({ ...prev, patientMobile: value }));
+    }
   };
 
   const handleMedicationChange = (index, field, value) => {
@@ -612,6 +605,10 @@ const OCRScanner = () => {
     }
   };
 
+  // Combined error and success messages
+  const displayError = error || patientError;
+  const displaySuccess = success || patientSuccess;
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -627,20 +624,20 @@ const OCRScanner = () => {
           </div>
         </div>
 
-        {error && (
+        {displayError && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-center text-red-800">
               <AlertTriangle className="w-5 h-5 mr-2" />
-              {error}
+              {displayError}
             </div>
           </div>
         )}
 
-        {success && (
+        {displaySuccess && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-center text-green-800">
               <CheckCircle className="w-5 h-5 mr-2" />
-              {success}
+              {displaySuccess}
             </div>
           </div>
         )}
@@ -733,30 +730,32 @@ const OCRScanner = () => {
                 </div>
               )}
 
+              {/* Patient Search Section */}
+              <PatientSearch 
+                onPatientFound={handlePatientIdSearch}
+                placeholder="Enter patient email or mobile..."
+                className="p-3"
+                showInstructions={true}
+              />
+
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">Patient Email/ID</label>
+                    <label className="block text-sm font-medium text-gray-700">Patient Email</label>
                     <input
-                      type="text"
+                      type="email"
                       value={prescriptionData.patientEmail}
-                      onChange={(e) => {
-                        handleInputChange("patientEmail", e.target.value);
-                        setSearchId(e.target.value);
-                      }}
-                      placeholder="patient@example.com or ID"
+                      onChange={(e) => handleInputChange("patientEmail", e.target.value)}
+                      placeholder="patient@example.com"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">Patient Mobile</label>
                     <input
-                      type="text"
+                      type="tel"
                       value={prescriptionData.patientMobile}
-                      onChange={(e) => {
-                        handleInputChange('patientMobile', e.target.value);
-                        setSearchId(e.target.value);
-                      }}
+                      onChange={(e) => handleInputChange('patientMobile', e.target.value)}
                       placeholder="+1234567890"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
