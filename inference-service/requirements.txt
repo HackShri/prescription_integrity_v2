@@ -1,5 +1,11 @@
 fastapi
-uvicorn
+uvicorn[standard]
 transformers
-
+torch
 soundfile
+librosa
+numpy
+pydub
+ffmpeg-python
+spacy
+requests

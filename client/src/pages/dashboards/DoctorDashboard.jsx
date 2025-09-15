@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QRCode } from 'react-qr-code';
 import SignatureCanvas from 'react-signature-canvas';
-import { createPrescription, transcribeAudio } from '../../api/prescriptionService';
+import { createPrescription, transcribeAudio, smartTranscribeAudio } from '../../api/prescriptionService';
 import { usePatientSearch } from '../../utils/patientUtils'; // Import the shared hook
 import {
   Mic,
@@ -49,8 +49,10 @@ const DoctorDashboard = () => {
   const [generatedPrescription, setGeneratedPrescription] = useState(null);
   const [error, setError] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [signature, setSignature] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [smartMode, setSmartMode] = useState(true); // Enable smart transcription by default
   const sigCanvasRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -113,12 +115,63 @@ const DoctorDashboard = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const formData = new FormData();
         formData.append('audio', audioBlob, 'recording.webm');
+        
+        setIsTranscribing(true);
         try {
-          const { data } = await transcribeAudio(formData);
-          setPrescription((prev) => ({ ...prev, instructions: data.transcription }));
+          let response;
+          if (smartMode) {
+            // Use smart transcription with prescription generation
+            response = await smartTranscribeAudio(
+              formData, 
+              parseInt(prescription.age) || 25, 
+              parseFloat(prescription.weight) || 70.0
+            );
+          } else {
+            // Use regular transcription
+            response = await transcribeAudio(formData);
+          }
+          
+          const { data } = response;
+          
+          if (data.transcription) {
+            setPrescription((prev) => ({ 
+              ...prev, 
+              instructions: prev.instructions ? 
+                `${prev.instructions} ${data.transcription}` : 
+                data.transcription 
+            }));
+            
+            // If smart mode and prescription generated, auto-populate medications
+            if (smartMode && data.prescription && data.prescription.medications) {
+              const smartMedications = data.prescription.medications.map(med => ({
+                name: med.name,
+                dosage: med.dosage,
+                frequency: med.frequency,
+                instructions: med.instructions
+              }));
+              
+              setPrescription((prev) => ({
+                ...prev,
+                medications: [...prev.medications, ...smartMedications]
+              }));
+              
+              // Show success message
+              setError('');
+              setTimeout(() => {
+                setError(''); // Clear any previous errors
+              }, 100);
+            }
+            
+            setError(''); // Clear any previous errors
+          } else {
+            setError('No speech detected in recording');
+          }
         } catch (err) {
-          console.error(err);
-          setError('Transcription failed');
+          console.error('Transcription error:', err);
+          const errorMessage = err.response?.data?.error || 'Transcription failed. Please try again.';
+          setError(errorMessage);
+        } finally {
+          setIsTranscribing(false);
         }
       };
 
@@ -368,23 +421,66 @@ const DoctorDashboard = () => {
                 </div>
 
                 <div className="form-group">
-                  <Label htmlFor="instructions">
-                    <FileText className="w-4 h-4 inline mr-2" />
-                    General Instructions
-                  </Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="instructions">
+                      <FileText className="w-4 h-4 inline mr-2" />
+                      General Instructions
+                      {isListening && (
+                        <span className="ml-2 text-sm text-red-500 font-medium">
+                          🎤 Recording...
+                        </span>
+                      )}
+                      {isTranscribing && (
+                        <span className="ml-2 text-sm text-blue-500 font-medium">
+                          ⏳ Transcribing...
+                        </span>
+                      )}
+                    </Label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="smartMode"
+                        checked={smartMode}
+                        onChange={(e) => setSmartMode(e.target.checked)}
+                        className="rounded"
+                      />
+                      <Label htmlFor="smartMode" className="text-sm">
+                        🧠 Smart Mode (Auto-generate prescriptions)
+                      </Label>
+                    </div>
+                  </div>
                   <div className="flex space-x-2">
                     <Input 
                       id="instructions" 
                       name="instructions" 
-                      placeholder="Enter instructions..." 
+                      placeholder="Enter instructions or use voice input..." 
                       value={prescription.instructions} 
                       onChange={handleChange} 
                       className="form-input flex-1" 
                     />
-                    <Button type="button" variant="outline" size="icon" onClick={handleVoiceInput} className="w-12 h-12">
-                        {isListening ? <Mic className="h-4 w-4 animate-pulse text-red-500" /> : <Mic className="h-4 w-4" />}
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={handleVoiceInput} 
+                      className="w-12 h-12"
+                      disabled={isTranscribing}
+                      title={isListening ? "Stop recording" : isTranscribing ? "Transcribing..." : "Start voice input"}
+                    >
+                        {isTranscribing ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                        ) : isListening ? (
+                          <Mic className="h-4 w-4 animate-pulse text-red-500" />
+                        ) : (
+                          <Mic className="h-4 w-4" />
+                        )}
                     </Button>
                   </div>
+                  {isListening && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Click the microphone again to stop recording
+                    </p>
+                  )}
                 </div>
 
                 <MedicationForm 

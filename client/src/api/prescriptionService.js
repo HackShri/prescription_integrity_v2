@@ -64,3 +64,31 @@ export const transcribeAudio = (formData) => {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
 };
+
+// Smart Transcription Endpoint with Prescription Generation
+export const smartTranscribeAudio = (formData, age = 25, weight = 70) => {
+    const data = new FormData();
+    data.append('audio', formData.get('audio'));
+    data.append('age', age.toString());
+    data.append('weight', weight.toString());
+    
+    return apiClient.post('/smart-transcribe', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+};
+
+// Offline Prescription Creation Endpoint
+export const createOfflinePrescription = (prescriptionData) => {
+    return apiClient.post('/prescriptions/offline', prescriptionData, { withCredentials: true });
+};
+
+// Drug Interaction Check Endpoint
+export const checkDrugInteractions = (drugs, age = 25, weight = 70) => {
+    return fetch('http://localhost:8001/check-drug-interactions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ drugs, age, weight })
+    }).then(response => response.json());
+};

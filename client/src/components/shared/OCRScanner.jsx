@@ -9,18 +9,27 @@ const OCRScanner = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [drugInteractions, setDrugInteractions] = useState([]);
+  const [isCheckingDrugs, setIsCheckingDrugs] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [prescriptionData, setPrescriptionData] = useState({
     patientEmail: '',
     patientMobile: '',
+    patientName: '',
     instructions: '',
     medications: [],
     age: '',
     weight: '',
     height: '',
     usageLimit: 1,
-    expiresAt: ''
+    expiresAt: '',
+    doctorName: '',
+    doctorEmail: '',
+    doctorMobile: '',
+    clinicName: '',
+    clinicAddress: ''
   });
 
   // Use the shared patient search hook
@@ -173,14 +182,20 @@ const OCRScanner = () => {
         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,;:()[]{}@#$%&*+-=/\\|<>?!"\'`~ ',
         tessedit_pageseg_mode: '6', // Uniform block of text
         preserve_interword_spaces: '1',
+        tessedit_ocr_engine_mode: '1', // LSTM OCR Engine Mode
+        tessedit_char_blacklist: '|', // Remove pipe characters that often cause issues
       });
 
       const { data: { text, confidence } } = await worker.recognize(image);
       await worker.terminate();
 
-      if (confidence < 30) {
-        setError('Text recognition confidence is low. Please try with a clearer image.');
+      if (confidence < 25) {
+        setError('Text recognition confidence is very low. Please try with a clearer image or better lighting.');
         return;
+      }
+      
+      if (confidence < 50) {
+        setSuccess('Text extracted with moderate confidence. Please review the extracted information carefully.');
       }
 
       setExtractedText(text);
@@ -206,13 +221,19 @@ const OCRScanner = () => {
     const parsedData = {
       patientEmail: '',
       patientMobile: '',
+      patientName: '',
       instructions: '',
       medications: [],
       age: '',
       weight: '',
       height: '',
       usageLimit: 1,
-      expiresAt: ''
+      expiresAt: '',
+      doctorName: '',
+      doctorEmail: '',
+      doctorMobile: '',
+      clinicName: '',
+      clinicAddress: ''
     };
 
     // Enhanced email extraction with multiple patterns
@@ -322,52 +343,58 @@ const OCRScanner = () => {
     // Advanced medication extraction with multiple patterns
     const medications = [];
     
-    // Pattern 1: Numbered list format (1. Medicine name dosage)
-    const numberedMedPattern = /^(\d+\.?\s*)(.*?)(\d+(?:\.\d+)?\s*(?:mg|ml|g|iu|mcg|units?).*?)$/gmi;
+    // Pattern 1: Enhanced numbered list format (1. Medicine name dosage quantity frequency)
+    const numberedMedPattern = /^(\d+\.?\s*)(.*?)(\d+(?:\.\d+)?\s*(?:mg|ml|g|iu|mcg|units?).*?)(?:\s+(\d+)\s*(?:tab|tablet|cap|capsule|ml|drops?))?(?:\s+(.*?))?$/gmi;
     let match;
     while ((match = numberedMedPattern.exec(text)) !== null) {
       const medName = match[2].trim();
       const dosageInfo = match[3].trim();
+      const quantityInfo = match[4] ? match[4].trim() : '';
+      const additionalInfo = match[5] ? match[5].trim() : '';
       
       if (medName && dosageInfo) {
-        medications.push(extractMedicationDetails(medName, dosageInfo, match[0]));
+        medications.push(extractMedicationDetails(medName, dosageInfo, match[0], quantityInfo, additionalInfo));
       }
     }
 
-    // Pattern 2: Medicine name followed by dosage on same line
+    // Pattern 2: Enhanced medicine name followed by dosage and quantity
     if (medications.length === 0) {
-      const medDosagePattern = /([A-Za-z][A-Za-z\s]{2,30}?)\s+(\d+(?:\.\d+)?\s*(?:mg|ml|g|iu|mcg|units?).*?)(?:\n|$)/gi;
+      const medDosagePattern = /([A-Za-z][A-Za-z\s]{2,30}?)\s+(\d+(?:\.\d+)?\s*(?:mg|ml|g|iu|mcg|units?).*?)(?:\s+(\d+)\s*(?:tab|tablet|cap|capsule|ml|drops?))?(?:\s+(.*?))?(?:\n|$)/gi;
       while ((match = medDosagePattern.exec(text)) !== null) {
         const medName = match[1].trim();
         const dosageInfo = match[2].trim();
+        const quantityInfo = match[3] ? match[3].trim() : '';
+        const additionalInfo = match[4] ? match[4].trim() : '';
         
         if (isValidMedicineName(medName) && dosageInfo) {
-          medications.push(extractMedicationDetails(medName, dosageInfo, match[0]));
+          medications.push(extractMedicationDetails(medName, dosageInfo, match[0], quantityInfo, additionalInfo));
         }
       }
     }
 
-    // Pattern 3: Rx: or Prescription: section parsing
+    // Pattern 3: Enhanced Rx: or Prescription: section parsing
     const rxSectionMatch = text.match(/(?:rx|prescription|medicines?):?\s*([\s\S]*?)(?:\n\n|instructions?:|note:|$)/i);
     if (rxSectionMatch && medications.length === 0) {
       const rxSection = rxSectionMatch[1];
       const rxLines = rxSection.split('\n').filter(line => line.trim());
       
       rxLines.forEach(line => {
-        const medMatch = line.match(/^(\d+\.?\s*)?(.*?)(\d+(?:\.\d+)?\s*(?:mg|ml|g|iu|mcg|units?).*?)$/i);
+        const medMatch = line.match(/^(\d+\.?\s*)?(.*?)(\d+(?:\.\d+)?\s*(?:mg|ml|g|iu|mcg|units?).*?)(?:\s+(\d+)\s*(?:tab|tablet|cap|capsule|ml|drops?))?(?:\s+(.*?))?$/i);
         if (medMatch) {
           const medName = medMatch[2].trim();
           const dosageInfo = medMatch[3].trim();
+          const quantityInfo = medMatch[4] ? medMatch[4].trim() : '';
+          const additionalInfo = medMatch[5] ? medMatch[5].trim() : '';
           
           if (medName && dosageInfo) {
-            medications.push(extractMedicationDetails(medName, dosageInfo, line));
+            medications.push(extractMedicationDetails(medName, dosageInfo, line, quantityInfo, additionalInfo));
           }
         }
       });
     }
 
     // Helper function to extract detailed medication information
-    function extractMedicationDetails(name, dosageInfo, fullLine) {
+    function extractMedicationDetails(name, dosageInfo, fullLine, quantityInfo = '', additionalInfo = '') {
       const medication = {
         name: name.replace(/^[\d\.\s]+/, '').trim(),
         dosage: '',
@@ -377,6 +404,11 @@ const OCRScanner = () => {
         duration: '',
         instructions: fullLine.trim()
       };
+
+      // Extract quantity if provided
+      if (quantityInfo) {
+        medication.quantity = quantityInfo;
+      }
 
       // Extract dosage
       const dosageMatch = dosageInfo.match(/(\d+(?:\.\d+)?\s*(?:mg|ml|g|iu|mcg|units?))/i);
@@ -430,10 +462,21 @@ const OCRScanner = () => {
         medication.duration = `${durationMatch[1]} ${durationMatch[2]}`;
       }
 
-      // Extract quantity
-      const quantityMatch = fullLine.match(/(\d+)\s*(?:tab|tablet|cap|capsule|ml|drops?)/i);
-      if (quantityMatch) {
-        medication.quantity = quantityMatch[1];
+      // Enhanced quantity extraction with multiple patterns
+      if (!medication.quantity) {
+        const quantityPatterns = [
+          /(\d+)\s*(?:tab|tablet|cap|capsule|ml|drops?)/gi,
+          /(?:quantity|qty|total):?\s*(\d+)/gi,
+          /(?:buy|purchase)\s+(\d+)/gi
+        ];
+        
+        for (const pattern of quantityPatterns) {
+          const quantityMatch = fullLine.match(pattern);
+          if (quantityMatch) {
+            medication.quantity = quantityMatch[1];
+            break;
+          }
+        }
       }
 
       return medication;
@@ -450,6 +493,92 @@ const OCRScanner = () => {
     }
 
     parsedData.medications = medications;
+
+    // Enhanced patient name extraction
+    const patientNamePatterns = [
+      /(?:patient name|name|patient):?\s*([A-Za-z\s]{2,50})/gi,
+      /(?:mr|mrs|ms|miss)\s+([A-Za-z\s]{2,50})/gi,
+      /^([A-Za-z\s]{2,50})\s*(?:age|dob|\d+)/gmi
+    ];
+    
+    for (const pattern of patientNamePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1] && match[1].trim().length > 2) {
+        const name = match[1].trim();
+        // Filter out common false positives
+        if (!name.toLowerCase().includes('patient') && !name.toLowerCase().includes('name')) {
+          parsedData.patientName = name;
+          break;
+        }
+      }
+    }
+
+    // Enhanced doctor information extraction
+    const doctorNamePatterns = [
+      /(?:dr|doctor):?\s*([A-Za-z\s]{2,30})/gi,
+      /(?:prescribed by|by):?\s*([A-Za-z\s]{2,30})/gi,
+      /(?:physician):?\s*([A-Za-z\s]{2,30})/gi,
+      /(?:consultant):?\s*([A-Za-z\s]{2,30})/gi,
+      /(?:md|mbbs):?\s*([A-Za-z\s]{2,30})/gi
+    ];
+    
+    for (const pattern of doctorNamePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1] && match[1].trim().length > 2) {
+        const doctorName = match[1].trim();
+        // Clean up common prefixes/suffixes
+        parsedData.doctorName = doctorName.replace(/^(dr|doctor|md|mbbs)\s*/i, '').trim();
+        break;
+      }
+    }
+
+    // Doctor email extraction
+    const doctorEmailPatterns = [
+      /(?:doctor|dr|physician).*?([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,})/gi,
+      /(?:consultant).*?([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,})/gi
+    ];
+    
+    for (const pattern of doctorEmailPatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        parsedData.doctorEmail = match[1];
+        break;
+      }
+    }
+
+    // Doctor mobile extraction
+    const doctorMobilePatterns = [
+      /(?:doctor|dr|physician|consultant).*?(?:phone|mobile|contact):?\s*([+]?[\d\s\-\(\)]{10,15})/gi
+    ];
+    
+    for (const pattern of doctorMobilePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        let mobile = match[1].replace(/[\s\-\(\)]/g, '');
+        if (mobile.length >= 10) {
+          parsedData.doctorMobile = mobile;
+          break;
+        }
+      }
+    }
+
+    // Clinic/Hospital information extraction
+    const clinicPatterns = [
+      /(?:clinic|hospital|medical center|health center):?\s*([A-Za-z\s]{2,50})/gi,
+      /(?:address|location):?\s*([A-Za-z0-9\s,\.]{10,100})/gi
+    ];
+    
+    for (const pattern of clinicPatterns) {
+      const match = text.match(pattern);
+      if (match && match[1] && match[1].trim().length > 5) {
+        const clinicInfo = match[1].trim();
+        if (clinicInfo.toLowerCase().includes('clinic') || clinicInfo.toLowerCase().includes('hospital')) {
+          parsedData.clinicName = clinicInfo;
+        } else {
+          parsedData.clinicAddress = clinicInfo;
+        }
+      }
+    }
 
     // Enhanced instructions extraction
     const instructionPatterns = [
@@ -501,8 +630,11 @@ const OCRScanner = () => {
     
     // Show extraction summary
     const extractedCount = [
-      parsedData.patientEmail ? 'Email' : null,
-      parsedData.patientMobile ? 'Phone' : null,
+      parsedData.patientName ? 'Patient Name' : null,
+      parsedData.patientEmail ? 'Patient Email' : null,
+      parsedData.patientMobile ? 'Patient Phone' : null,
+      parsedData.doctorName ? 'Doctor Name' : null,
+      parsedData.clinicName ? 'Clinic Name' : null,
       parsedData.age ? 'Age' : null,
       parsedData.weight ? 'Weight' : null,
       parsedData.height ? 'Height' : null,
@@ -567,19 +699,112 @@ const OCRScanner = () => {
     }));
   };
 
-  const copyToDoctorDashboard = () => {
-    const dataToStore = {
-      ...prescriptionData,
-      timestamp: new Date().toISOString(),
-      extractedText: extractedText
-    };
+  const checkDrugInteractions = async () => {
+    if (prescriptionData.medications.length === 0) {
+      setError('No medications to check for interactions.');
+      return;
+    }
 
-    // Store in memory instead of localStorage
-    window.ocrPrescriptionData = dataToStore;
-    setSuccess("Prescription data prepared for doctor dashboard!");
+    setIsCheckingDrugs(true);
+    setError('');
+    
+    try {
+      const drugNames = prescriptionData.medications.map(med => med.name).filter(name => name.trim());
+      
+      if (drugNames.length === 0) {
+        setError('No valid drug names found to check.');
+        setIsCheckingDrugs(false);
+        return;
+      }
 
-    // In a real app, you would navigate to the dashboard
-    console.log('Data prepared for dashboard:', dataToStore);
+      // Call the inference service for drug interaction checking
+      const response = await fetch('http://localhost:8001/check-drug-interactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          drugs: drugNames,
+          age: parseInt(prescriptionData.age) || 25,
+          weight: parseFloat(prescriptionData.weight) || 70
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to check drug interactions');
+      }
+
+      const result = await response.json();
+      setDrugInteractions(result.interactions || []);
+      
+      if (result.interactions && result.interactions.length > 0) {
+        setError(`⚠️ Found ${result.interactions.length} potential drug interaction(s). Please review carefully.`);
+      } else {
+        setSuccess('✅ No significant drug interactions detected.');
+      }
+    } catch (err) {
+      console.error('Drug interaction check failed:', err);
+      setError('Failed to check drug interactions. Please verify medications manually.');
+    } finally {
+      setIsCheckingDrugs(false);
+    }
+  };
+
+  const createOfflinePrescription = async () => {
+    if (prescriptionData.medications.length === 0) {
+      setError('Please add at least one medication before creating prescription.');
+      return;
+    }
+
+    if (!prescriptionData.doctorName) {
+      setError('Please enter the doctor\'s name who prescribed this medication.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      // Create prescription with offline flag
+      const prescriptionPayload = {
+        ...prescriptionData,
+        age: parseInt(prescriptionData.age) || 0,
+        weight: parseFloat(prescriptionData.weight) || 0,
+        height: parseFloat(prescriptionData.height) || 0,
+        usageLimit: parseInt(prescriptionData.usageLimit) || 1,
+        isOfflinePrescription: true,
+        originalPrescriptionText: extractedText,
+        timestamp: new Date().toISOString()
+      };
+
+      const response = await fetch('/api/prescriptions/offline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(prescriptionPayload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create prescription');
+      }
+
+      const result = await response.json();
+      setSuccess(`✅ Offline prescription created successfully! Prescription ID: ${result._id.slice(-6)}`);
+      
+      // Reset form after successful creation
+      setTimeout(() => {
+        resetScanner();
+      }, 3000);
+
+    } catch (err) {
+      console.error('Prescription creation error:', err);
+      setError(err.message || 'Failed to create prescription');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetScanner = () => {
@@ -588,16 +813,23 @@ const OCRScanner = () => {
     setError('');
     setSuccess('');
     setSearchId('');
+    setDrugInteractions([]);
     setPrescriptionData({
       patientEmail: '',
       patientMobile: '',
+      patientName: '',
       instructions: '',
       medications: [],
       age: '',
       weight: '',
       height: '',
       usageLimit: 1,
-      expiresAt: ''
+      expiresAt: '',
+      doctorName: '',
+      doctorEmail: '',
+      doctorMobile: '',
+      clinicName: '',
+      clinicAddress: ''
     });
     stopCamera();
     if (fileInputRef.current) {
@@ -739,7 +971,17 @@ const OCRScanner = () => {
               />
 
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Patient Name</label>
+                    <input
+                      type="text"
+                      value={prescriptionData.patientName}
+                      onChange={(e) => handleInputChange("patientName", e.target.value)}
+                      placeholder="John Doe"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">Patient Email</label>
                     <input
@@ -759,6 +1001,68 @@ const OCRScanner = () => {
                       placeholder="+1234567890"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
+                  </div>
+                </div>
+
+                {/* Doctor Information Section */}
+                <div className="border-t pt-4">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Doctor Information (Offline Prescription)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">Doctor Name *</label>
+                      <input
+                        type="text"
+                        value={prescriptionData.doctorName}
+                        onChange={(e) => handleInputChange('doctorName', e.target.value)}
+                        placeholder="Dr. John Smith"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">Doctor Email</label>
+                      <input
+                        type="email"
+                        value={prescriptionData.doctorEmail}
+                        onChange={(e) => handleInputChange('doctorEmail', e.target.value)}
+                        placeholder="doctor@hospital.com"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">Doctor Mobile</label>
+                      <input
+                        type="tel"
+                        value={prescriptionData.doctorMobile}
+                        onChange={(e) => handleInputChange('doctorMobile', e.target.value)}
+                        placeholder="+1234567890"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Clinic Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">Clinic/Hospital Name</label>
+                      <input
+                        type="text"
+                        value={prescriptionData.clinicName}
+                        onChange={(e) => handleInputChange('clinicName', e.target.value)}
+                        placeholder="City Hospital"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">Clinic Address</label>
+                      <input
+                        type="text"
+                        value={prescriptionData.clinicAddress}
+                        onChange={(e) => handleInputChange('clinicAddress', e.target.value)}
+                        placeholder="123 Main St, City, State"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -795,6 +1099,16 @@ const OCRScanner = () => {
                           Remove
                         </button>
                       </div>
+                      
+                      {/* Drug Interaction Warning */}
+                      {drugInteractions.some(interaction => 
+                        interaction.drug1.toLowerCase() === med.name.toLowerCase() || 
+                        interaction.drug2.toLowerCase() === med.name.toLowerCase()
+                      ) && (
+                        <div className="p-2 bg-red-100 border border-red-300 rounded text-red-800 text-sm">
+                          ⚠️ Potential drug interaction detected
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         <input
@@ -849,6 +1163,53 @@ const OCRScanner = () => {
                     </div>
                   ))}
                 </div>
+
+                {/* Drug Interaction Check Section */}
+                {prescriptionData.medications.length > 0 && (
+                  <div className="border-t pt-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-lg font-medium text-gray-900">Drug Interaction Check</h4>
+                      <button
+                        onClick={checkDrugInteractions}
+                        disabled={isCheckingDrugs || prescriptionData.medications.length === 0}
+                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                      >
+                        {isCheckingDrugs ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Checking...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="w-4 h-4 mr-2" />
+                            Check Interactions
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    
+                    {drugInteractions.length > 0 && (
+                      <div className="space-y-2">
+                        <h5 className="font-medium text-red-800">⚠️ Drug Interactions Detected:</h5>
+                        {drugInteractions.map((interaction, index) => (
+                          <div key={index} className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="font-medium text-red-800">
+                              {interaction.drug1} + {interaction.drug2}
+                            </p>
+                            <p className="text-sm text-red-700 mt-1">
+                              {interaction.severity}: {interaction.description}
+                            </p>
+                            {interaction.recommendation && (
+                              <p className="text-sm text-red-600 mt-2 italic">
+                                Recommendation: {interaction.recommendation}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
@@ -905,12 +1266,21 @@ const OCRScanner = () => {
 
                 <div className="flex space-x-3 pt-4">
                   <button
-                    onClick={copyToDoctorDashboard}
-                    disabled={prescriptionData.medications.length === 0}
+                    onClick={createOfflinePrescription}
+                    disabled={prescriptionData.medications.length === 0 || !prescriptionData.doctorName || isSubmitting}
                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
-                    <Send className="w-4 h-4 mr-2" />
-                    Send to Doctor Dashboard
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating Prescription...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Create Prescription
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={resetScanner}

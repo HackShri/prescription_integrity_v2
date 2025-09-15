@@ -9,6 +9,95 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 
+// Offline prescription creation endpoint (for OCR scanned prescriptions)
+router.post('/offline', authMiddleware, async (req, res) => {
+  const {
+    patientEmail,
+    patientMobile,
+    patientName,
+    instructions,
+    medications,
+    age,
+    weight,
+    height,
+    usageLimit,
+    expiresAt,
+    doctorName,
+    doctorEmail,
+    doctorMobile,
+    clinicName,
+    clinicAddress,
+    isOfflinePrescription,
+    originalPrescriptionText
+  } = req.body;
+  
+  try {
+    // Find patient by email or mobile number
+    let patient;
+    if (patientEmail) {
+      patient = await User.findOne({ email: patientEmail, role: 'patient' });
+    }
+    if (!patient && patientMobile) {
+      patient = await User.findOne({ mobile: patientMobile, role: 'patient' });
+    }
+    
+    if (!patient) {
+      return res.status(400).json({ message: 'Patient not found. Please check the email or mobile number.' });
+    }
+    
+    // For offline prescriptions, we use a special doctor ID or the current user's ID
+    const doctorId = req.user.userId; // The user who is digitizing the prescription
+    
+    const prescription = new Prescription({
+      patientEmail: patient.email,
+      patientMobile: patient.mobile || patientMobile,
+      patientId: patient._id,
+      doctorId: doctorId,
+      instructions,
+      medications,
+      age,
+      weight,
+      height,
+      usageLimit,
+      expiresAt,
+      doctorSignature: '', // No signature for offline prescriptions
+      patientPhoto: patient.photo || '',
+      isOfflinePrescription: true,
+      originalPrescriptionText: originalPrescriptionText || '',
+      patientName: patientName || '',
+      doctorName: doctorName || '',
+      doctorEmail: doctorEmail || '',
+      doctorMobile: doctorMobile || '',
+      clinicName: clinicName || '',
+      clinicAddress: clinicAddress || ''
+    });
+    await prescription.save();
+
+    // Create notification for patient
+    await Notification.create({
+      user: patient._id,
+      type: 'prescription',
+      message: `A new prescription has been digitized and issued to you by ${doctorName || 'a doctor'}.`,
+      meta: { prescriptionId: prescription._id }
+    });
+
+    // Emit socket event to patient
+    const io = req.app.get('io');
+    if (io) {
+      io.to(String(patient._id)).emit('notification', {
+        type: 'prescription',
+        message: `A new prescription has been digitized and issued to you by ${doctorName || 'a doctor'}.`,
+        prescriptionId: prescription._id
+      });
+    }
+
+    res.status(201).json({ _id: prescription._id, patientId: patient._id });
+  } catch (err) {
+    console.error('Offline prescription creation error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.post('/', authMiddleware, roleMiddleware('doctor'), async (req, res) => {
   const {
     patientEmail,
