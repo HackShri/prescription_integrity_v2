@@ -47,8 +47,12 @@ class RAGPrescriptionGenerator:
         self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         # Load full KB and keep a lookup map by condition_name for rehydration later
         self._raw_kb = self._load_data(data_path)
+        # Normalize condition names for robust lookups (strip + lower)
+        def _norm_key(v):
+            return v.strip().lower() if isinstance(v, str) else ""
+
         self._condition_by_name = {
-            item.get("condition_name"): item for item in self._raw_kb if item.get("condition_name")
+            _norm_key(item.get("condition_name")): item for item in self._raw_kb if item.get("condition_name")
         }
         self.vector_store = self._create_vector_store_from_items(self._raw_kb)
         self.retriever = self.vector_store.as_retriever(search_kwargs={"k": 1})
@@ -77,6 +81,72 @@ class RAGPrescriptionGenerator:
         except Exception as e:
             logger.error(f"❌ Failed to load or parse {data_path}: {e}")
             raise
+
+    def _normalize(self, s: str) -> str:
+        if not s:
+            return ""
+        return s.strip().lower()
+
+    def _find_best_by_text(self, text: str):
+        """Simple fallback matching: tries to find a KB item whose condition_name or symptoms appear in the text."""
+        t = text.lower()
+        # 1) exact condition name substring
+        for item in self._raw_kb:
+            name = (item.get("condition_name") or "").lower()
+            if name and name in t:
+                return item
+
+        # 2) check symptoms overlap (first-match)
+        for item in self._raw_kb:
+            syms = item.get("symptoms", [])
+            for s in syms:
+                if s and s.lower() in t:
+                    return item
+
+        return None
+
+    def _calculate_quantity(self, frequency: str, duration: str, default_qty):
+        """Try to derive a numeric quantity from frequency and duration. Return default if ambiguous."""
+        import re
+
+        # parse days from duration (e.g., '7 days')
+        days = None
+        if duration:
+            m = re.search(r"(\d+)", duration)
+            if m:
+                try:
+                    days = int(m.group(1))
+                except Exception:
+                    days = None
+
+        if days is None:
+            days = 5
+
+        per_day = None
+        if frequency:
+            f = frequency.lower()
+            if "once" in f and "daily" in f or f == "once daily" or "once" == f:
+                per_day = 1
+            elif "twice" in f or "two" in f or "2" in f:
+                per_day = 2
+            elif "thrice" in f or "three" in f or "3" in f:
+                per_day = 3
+            elif "every" in f:
+                m = re.search(r"every\s*(\d+)\s*hour", f)
+                if m:
+                    hrs = int(m.group(1))
+                    if hrs > 0:
+                        per_day = max(1, 24 // hrs)
+            # leave per_day None for 'as needed' or unusual phrases
+
+        if per_day is None:
+            return default_qty
+
+        try:
+            qty = int(per_day) * int(days)
+            return qty
+        except Exception:
+            return default_qty
 
     def _create_vector_store_from_items(self, items: List[Dict]):
         documents = []
@@ -232,7 +302,16 @@ class RAGPrescriptionGenerator:
             
             retrieved_meta = retrieved_docs[0].metadata or {}
             condition_name = retrieved_meta.get("condition_name", "Unknown")
-            full_context = self._condition_by_name.get(condition_name, {})
+            # Normalize lookup key to match how we stored _condition_by_name
+            lookup_key = self._normalize(condition_name)
+            full_context = self._condition_by_name.get(lookup_key, {})
+
+            # If mapping missed (case/spacing differences), try a text-based fallback
+            if not full_context:
+                fallback = self._find_best_by_text(transcription)
+                if fallback:
+                    full_context = fallback
+                    condition_name = fallback.get("condition_name", condition_name)
             suggested_drugs = full_context.get("suggested_drugs", [])
             general_advice = full_context.get("general_advice", "Follow medication instructions carefully.")
             
