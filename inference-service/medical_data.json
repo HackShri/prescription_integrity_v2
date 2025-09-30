@@ -1,0 +1,808 @@
+[
+  {
+    "condition_name": "Fungal infection",
+    "symptoms": [
+      "itching",
+      "skin rash",
+      "nodal skin eruptions",
+      "dischromic  patches"
+    ],
+    "general_advice": "bath twice use detol or neem in bathing water keep infected area dry use clean cloths",
+    "suggested_drugs": [
+      {
+        "name": "Cetirizine"
+      },
+      {
+        "name": "Hydrocortisone Cream"
+      }
+    ]
+  },
+  {
+    "condition_name": "Allergy",
+    "symptoms": [
+      "continuous sneezing",
+      "shivering",
+      "chills",
+      "watering from eyes"
+    ],
+    "general_advice": "apply calamine cover area with bandage use ice to compress itching",
+    "suggested_drugs": [
+      {
+        "name": "Loratadine"
+      }
+    ]
+  },
+  {
+    "condition_name": "GERD",
+    "symptoms": [
+      "stomach pain",
+      "acidity",
+      "ulcers on tongue",
+      "vomiting",
+      "cough",
+      "chest pain"
+    ],
+    "general_advice": "avoid fatty spicy food avoid lying down after eating maintain healthy weight exercise",
+    "suggested_drugs": [
+      {
+        "name": "Antacid"
+      },
+      {
+        "name": "Ondansetron"
+      },
+      {
+        "name": "Dextromethorphan Syrup"
+      }
+    ]
+  },
+  {
+    "condition_name": "Chronic cholestasis",
+    "symptoms": [
+      "itching",
+      "vomiting",
+      "yellowish skin",
+      "nausea",
+      "loss of appetite",
+      "abdominal pain",
+      "yellowing of eyes"
+    ],
+    "general_advice": "cold baths anti itch medicine consult doctor eat healthy",
+    "suggested_drugs": [
+      {
+        "name": "Cetirizine"
+      },
+      {
+        "name": "Ondansetron"
+      }
+    ]
+  },
+  {
+    "condition_name": "Drug Reaction",
+    "symptoms": [
+      "itching",
+      "skin rash",
+      "stomach pain",
+      "burning micturition",
+      "spotting  urination"
+    ],
+    "general_advice": "stop irritation consult nearest hospital stop taking drug follow up",
+    "suggested_drugs": [
+      {
+        "name": "Cetirizine"
+      },
+      {
+        "name": "Hydrocortisone Cream"
+      }
+    ]
+  },
+  {
+    "condition_name": "Peptic ulcer diseae",
+    "symptoms": [
+      "vomiting",
+      "loss of appetite",
+      "abdominal pain",
+      "passage of gases",
+      "internal itching"
+    ],
+    "general_advice": "avoid fatty spicy food consume probiotic food eliminate milk limit alcohol",
+    "suggested_drugs": [
+      {
+        "name": "Ondansetron"
+      }
+    ]
+  },
+  {
+    "condition_name": "AIDS",
+    "symptoms": [
+      "muscle wasting",
+      "patches in throat",
+      "high fever",
+      "extra marital contacts"
+    ],
+    "general_advice": "avoid open cuts wear ppe if possible consult doctor follow up",
+    "suggested_drugs": []
+  },
+  {
+    "condition_name": "Diabetes ",
+    "symptoms": [
+      "fatigue",
+      "weight loss",
+      "restlessness",
+      "lethargy",
+      "irregular sugar level",
+      "blurred and distorted vision",
+      "obesity",
+      "excessive hunger",
+      "increased appetite",
+      "polyuria"
+    ],
+    "general_advice": "have balanced diet exercise consult doctor follow up",
+    "suggested_drugs": []
+  },
+  {
+    "condition_name": "Gastroenteritis",
+    "symptoms": [
+      "vomiting",
+      "sunken eyes",
+      "dehydration",
+      "diarrhoea"
+    ],
+    "general_advice": "stop eating solid food for while try taking small sips of water rest ease back into eating",
+    "suggested_drugs": [
+      {
+        "name": "Ondansetron"
+      },
+      {
+        "name": "Loperamide"
+      }
+    ]
+  },
+  {
+    "condition_name": "Bronchial Asthma",
+    "symptoms": [
+      "fatigue",
+      "cough",
+      "high fever",
+      "breathlessness",
+      "family history",
+      "mucoid sputum"
+    ],
+    "general_advice": "switch to loose cloothing take deep breaths get away from trigger seek help",
+    "suggested_drugs": [
+      {
+        "name": "Dextromethorphan Syrup"
+      }
+    ]
+  },
+  {
+    "condition_name": "Hypertension ",
+    "symptoms": [
+      "headache",
+      "chest pain",
+      "dizziness",
+      "loss of balance",
+      "lack of concentration"
+    ],
+    "general_advice": "meditation salt baths reduce stress get proper sleep",
+    "suggested_drugs": [
+      {
+        "name": "Ibuprofen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Migraine",
+    "symptoms": [
+      "acidity",
+      "indigestion",
+      "headache",
+      "blurred and distorted vision",
+      "excessive hunger",
+      "stiff neck",
+      "depression",
+      "irritability",
+      "visual disturbances"
+    ],
+    "general_advice": "meditation reduce stress use poloroid glasses in sun consult doctor",
+    "suggested_drugs": [
+      {
+        "name": "Antacid"
+      },
+      {
+        "name": "Ibuprofen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Cervical spondylosis",
+    "symptoms": [
+      "back pain",
+      "weakness in limbs",
+      "neck pain",
+      "dizziness",
+      "loss of balance"
+    ],
+    "general_advice": "use heating pad or cold pack exercise take otc pain reliver consult doctor",
+    "suggested_drugs": []
+  },
+  {
+    "condition_name": "Paralysis (brain hemorrhage)",
+    "symptoms": [
+      "vomiting",
+      "headache",
+      "weakness of one body side",
+      "altered sensorium"
+    ],
+    "general_advice": "massage eat healthy exercise consult doctor",
+    "suggested_drugs": [
+      {
+        "name": "Ondansetron"
+      },
+      {
+        "name": "Ibuprofen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Jaundice",
+    "symptoms": [
+      "itching",
+      "vomiting",
+      "fatigue",
+      "weight loss",
+      "high fever",
+      "yellowish skin",
+      "dark urine",
+      "abdominal pain"
+    ],
+    "general_advice": "drink plenty of water consume milk thistle eat fruits and high fiberous food medication",
+    "suggested_drugs": [
+      {
+        "name": "Cetirizine"
+      },
+      {
+        "name": "Ondansetron"
+      }
+    ]
+  },
+  {
+    "condition_name": "Malaria",
+    "symptoms": [
+      "chills",
+      "vomiting",
+      "high fever",
+      "sweating",
+      "headache",
+      "nausea",
+      "muscle pain"
+    ],
+    "general_advice": "Consult nearest hospital avoid oily food avoid non veg food keep mosquitos out",
+    "suggested_drugs": [
+      {
+        "name": "Ondansetron"
+      },
+      {
+        "name": "Ibuprofen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Chicken pox",
+    "symptoms": [
+      "itching",
+      "skin rash",
+      "fatigue",
+      "lethargy",
+      "high fever",
+      "headache",
+      "loss of appetite",
+      "mild fever",
+      "swelled lymph nodes",
+      "malaise",
+      "red spots over body"
+    ],
+    "general_advice": "use neem in bathing  consume neem leaves take vaccine avoid public places",
+    "suggested_drugs": [
+      {
+        "name": "Cetirizine"
+      },
+      {
+        "name": "Hydrocortisone Cream"
+      },
+      {
+        "name": "Ibuprofen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Dengue",
+    "symptoms": [
+      "skin rash",
+      "chills",
+      "joint pain",
+      "vomiting",
+      "fatigue",
+      "high fever",
+      "headache",
+      "nausea",
+      "loss of appetite",
+      "pain behind the eyes",
+      "back pain",
+      "muscle pain",
+      "red spots over body"
+    ],
+    "general_advice": "drink papaya leaf juice avoid fatty spicy food keep mosquitos away keep hydrated",
+    "suggested_drugs": [
+      {
+        "name": "Hydrocortisone Cream"
+      },
+      {
+        "name": "Naproxen"
+      },
+      {
+        "name": "Ondansetron"
+      },
+      {
+        "name": "Ibuprofen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Typhoid",
+    "symptoms": [
+      "chills",
+      "vomiting",
+      "fatigue",
+      "high fever",
+      "nausea",
+      "constipation",
+      "abdominal pain",
+      "diarrhoea",
+      "toxic look (typhos)",
+      "belly pain"
+    ],
+    "general_advice": "eat high calorie vegitables antiboitic therapy consult doctor medication",
+    "suggested_drugs": [
+      {
+        "name": "Ondansetron"
+      },
+      {
+        "name": "Loperamide"
+      }
+    ]
+  },
+  {
+    "condition_name": "hepatitis A",
+    "symptoms": [
+      "joint pain",
+      "vomiting",
+      "yellowish skin",
+      "dark urine",
+      "nausea",
+      "loss of appetite",
+      "abdominal pain",
+      "diarrhoea",
+      "mild fever",
+      "yellowing of eyes",
+      "muscle pain"
+    ],
+    "general_advice": "Consult nearest hospital wash hands through avoid fatty spicy food medication",
+    "suggested_drugs": [
+      {
+        "name": "Naproxen"
+      },
+      {
+        "name": "Ondansetron"
+      },
+      {
+        "name": "Loperamide"
+      }
+    ]
+  },
+  {
+    "condition_name": "Hepatitis B",
+    "symptoms": [
+      "itching",
+      "fatigue",
+      "lethargy",
+      "yellowish skin",
+      "dark urine",
+      "loss of appetite",
+      "abdominal pain",
+      "yellow urine",
+      "yellowing of eyes",
+      "malaise",
+      "receiving blood transfusion",
+      "receiving unsterile injections"
+    ],
+    "general_advice": "consult nearest hospital vaccination eat healthy medication",
+    "suggested_drugs": [
+      {
+        "name": "Cetirizine"
+      }
+    ]
+  },
+  {
+    "condition_name": "Hepatitis C",
+    "symptoms": [
+      "fatigue",
+      "yellowish skin",
+      "nausea",
+      "loss of appetite",
+      "family history"
+    ],
+    "general_advice": "Consult nearest hospital vaccination eat healthy medication",
+    "suggested_drugs": []
+  },
+  {
+    "condition_name": "Hepatitis D",
+    "symptoms": [
+      "joint pain",
+      "vomiting",
+      "fatigue",
+      "yellowish skin",
+      "dark urine",
+      "nausea",
+      "loss of appetite",
+      "abdominal pain",
+      "yellowing of eyes"
+    ],
+    "general_advice": "consult doctor medication eat healthy follow up",
+    "suggested_drugs": [
+      {
+        "name": "Naproxen"
+      },
+      {
+        "name": "Ondansetron"
+      }
+    ]
+  },
+  {
+    "condition_name": "Hepatitis E",
+    "symptoms": [
+      "joint pain",
+      "vomiting",
+      "fatigue",
+      "high fever",
+      "yellowish skin",
+      "dark urine",
+      "nausea",
+      "loss of appetite",
+      "abdominal pain",
+      "yellowing of eyes",
+      "coma",
+      "stomach bleeding"
+    ],
+    "general_advice": "stop alcohol consumption rest consult doctor medication",
+    "suggested_drugs": [
+      {
+        "name": "Naproxen"
+      },
+      {
+        "name": "Ondansetron"
+      }
+    ]
+  },
+  {
+    "condition_name": "Alcoholic hepatitis",
+    "symptoms": [
+      "vomiting",
+      "yellowish skin",
+      "abdominal pain",
+      "swelling of stomach",
+      "distention of abdomen",
+      "history of alcohol consumption",
+      "fluid overload"
+    ],
+    "general_advice": "stop alcohol consumption consult doctor medication follow up",
+    "suggested_drugs": [
+      {
+        "name": "Ondansetron"
+      }
+    ]
+  },
+  {
+    "condition_name": "Tuberculosis",
+    "symptoms": [
+      "chills",
+      "vomiting",
+      "fatigue",
+      "weight loss",
+      "cough",
+      "high fever",
+      "breathlessness",
+      "sweating",
+      "loss of appetite",
+      "mild fever",
+      "yellowing of eyes",
+      "swelled lymph nodes",
+      "malaise",
+      "phlegm",
+      "chest pain",
+      "blood in sputum"
+    ],
+    "general_advice": "cover mouth consult doctor medication rest",
+    "suggested_drugs": [
+      {
+        "name": "Ondansetron"
+      },
+      {
+        "name": "Dextromethorphan Syrup"
+      }
+    ]
+  },
+  {
+    "condition_name": "Common Cold",
+    "symptoms": [
+      "continuous sneezing",
+      "chills",
+      "fatigue",
+      "cough",
+      "high fever",
+      "headache",
+      "swelled lymph nodes",
+      "malaise",
+      "phlegm",
+      "throat irritation",
+      "redness of eyes",
+      "sinus pressure",
+      "runny nose",
+      "congestion",
+      "chest pain",
+      "loss of smell",
+      "muscle pain"
+    ],
+    "general_advice": "drink vitamin c rich drinks take vapour avoid cold food keep fever in check",
+    "suggested_drugs": [
+      {
+        "name": "Loratadine"
+      },
+      {
+        "name": "Dextromethorphan Syrup"
+      },
+      {
+        "name": "Ibuprofen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Pneumonia",
+    "symptoms": [
+      "chills",
+      "fatigue",
+      "cough",
+      "high fever",
+      "breathlessness",
+      "sweating",
+      "malaise",
+      "chest pain",
+      "fast heart rate",
+      "rusty sputum"
+    ],
+    "general_advice": "consult doctor medication rest follow up",
+    "suggested_drugs": [
+      {
+        "name": "Dextromethorphan Syrup"
+      }
+    ]
+  },
+  {
+    "condition_name": "Dimorphic hemmorhoids(piles)",
+    "symptoms": [
+      "constipation",
+      "pain during bowel movements",
+      "pain in anal region",
+      "bloody stool",
+      "irritation in anus"
+    ],
+    "general_advice": "avoid fatty spicy food consume witch hazel warm bath with epsom salt consume alovera juice",
+    "suggested_drugs": []
+  },
+  {
+    "condition_name": "Heart attack",
+    "symptoms": [
+      "vomiting",
+      "breathlessness",
+      "sweating",
+      "chest pain"
+    ],
+    "general_advice": "call ambulance chew or swallow asprin keep calm",
+    "suggested_drugs": [
+      {
+        "name": "Ondansetron"
+      }
+    ]
+  },
+  {
+    "condition_name": "Varicose veins",
+    "symptoms": [
+      "fatigue",
+      "cramps",
+      "bruising",
+      "obesity",
+      "swollen legs",
+      "swollen blood vessels",
+      "prominent veins on calf"
+    ],
+    "general_advice": "lie down flat and raise the leg high use oinments use vein compression dont stand still for long",
+    "suggested_drugs": []
+  },
+  {
+    "condition_name": "Hypothyroidism",
+    "symptoms": [
+      "fatigue",
+      "weight gain",
+      "cold hands and feets",
+      "mood swings",
+      "lethargy",
+      "dizziness",
+      "puffy face and eyes",
+      "enlarged thyroid",
+      "brittle nails",
+      "swollen extremeties",
+      "depression",
+      "irritability",
+      "abnormal menstruation"
+    ],
+    "general_advice": "reduce stress exercise eat healthy get proper sleep",
+    "suggested_drugs": []
+  },
+  {
+    "condition_name": "Hyperthyroidism",
+    "symptoms": [
+      "fatigue",
+      "mood swings",
+      "weight loss",
+      "restlessness",
+      "sweating",
+      "diarrhoea",
+      "fast heart rate",
+      "excessive hunger",
+      "muscle weakness",
+      "irritability",
+      "abnormal menstruation"
+    ],
+    "general_advice": "eat healthy massage use lemon balm take radioactive iodine treatment",
+    "suggested_drugs": [
+      {
+        "name": "Loperamide"
+      }
+    ]
+  },
+  {
+    "condition_name": "Hypoglycemia",
+    "symptoms": [
+      "vomiting",
+      "fatigue",
+      "anxiety",
+      "sweating",
+      "headache",
+      "nausea",
+      "blurred and distorted vision",
+      "excessive hunger",
+      "slurred speech",
+      "irritability",
+      "palpitations"
+    ],
+    "general_advice": "lie down on side check in pulse drink sugary drinks consult doctor",
+    "suggested_drugs": [
+      {
+        "name": "Ondansetron"
+      },
+      {
+        "name": "Ibuprofen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Osteoarthristis",
+    "symptoms": [
+      "joint pain",
+      "neck pain",
+      "knee pain",
+      "hip joint pain",
+      "swelling joints",
+      "painful walking"
+    ],
+    "general_advice": "acetaminophen consult nearest hospital follow up salt baths",
+    "suggested_drugs": [
+      {
+        "name": "Naproxen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Arthritis",
+    "symptoms": [
+      "muscle weakness",
+      "stiff neck",
+      "swelling joints",
+      "movement stiffness",
+      "painful walking"
+    ],
+    "general_advice": "exercise use hot and cold therapy try acupuncture massage",
+    "suggested_drugs": []
+  },
+  {
+    "condition_name": "(vertigo) Paroymsal  Positional Vertigo",
+    "symptoms": [
+      "vomiting",
+      "headache",
+      "nausea",
+      "spinning movements",
+      "loss of balance",
+      "unsteadiness"
+    ],
+    "general_advice": "lie down avoid sudden change in body avoid abrupt head movment relax",
+    "suggested_drugs": [
+      {
+        "name": "Ondansetron"
+      },
+      {
+        "name": "Ibuprofen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Acne",
+    "symptoms": [
+      "skin rash",
+      "pus filled pimples",
+      "blackheads",
+      "scurring"
+    ],
+    "general_advice": "bath twice avoid fatty spicy food drink plenty of water avoid too many products",
+    "suggested_drugs": [
+      {
+        "name": "Hydrocortisone Cream"
+      }
+    ]
+  },
+  {
+    "condition_name": "Urinary tract infection",
+    "symptoms": [
+      "burning micturition",
+      "bladder discomfort",
+      "foul smell of urine",
+      "continuous feel of urine"
+    ],
+    "general_advice": "drink plenty of water increase vitamin c intake drink cranberry juice take probiotics",
+    "suggested_drugs": []
+  },
+  {
+    "condition_name": "Psoriasis",
+    "symptoms": [
+      "skin rash",
+      "joint pain",
+      "skin peeling",
+      "silver like dusting",
+      "small dents in nails",
+      "inflammatory nails"
+    ],
+    "general_advice": "wash hands with warm soapy water stop bleeding using pressure consult doctor salt baths",
+    "suggested_drugs": [
+      {
+        "name": "Hydrocortisone Cream"
+      },
+      {
+        "name": "Naproxen"
+      }
+    ]
+  },
+  {
+    "condition_name": "Impetigo",
+    "symptoms": [
+      "skin rash",
+      "high fever",
+      "blister",
+      "red sore around nose",
+      "yellow crust ooze"
+    ],
+    "general_advice": "soak affected area in warm water use antibiotics remove scabs with wet compressed cloth consult doctor",
+    "suggested_drugs": [
+      {
+        "name": "Hydrocortisone Cream"
+      }
+    ]
+  }
+]

@@ -18,7 +18,7 @@ export const getPrescriptionByShortId = (shortId) => {
 };
 
 export const getShopHistory = () => {
-    return apiClient.get('/prescriptions/shop-history');
+    return apiClient.get('/prescriptions/history/pharmacist');
 };
 
 export const markPrescriptionAsUsed = (id) => {

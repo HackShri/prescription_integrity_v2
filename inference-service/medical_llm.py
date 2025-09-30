@@ -1,283 +1,202 @@
-#!/usr/bin/env python3
-"""
-Medical LLM Integration with Ollama and Llama 3.2
-Handles symptom-to-disease mapping and drug recommendations
-"""
-
-import requests
 import json
 import logging
 from typing import List, Dict, Optional
+import os
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
+SYSTEM_PROMPT = """
+You are a highly precise medical data structuring tool. Your task is to convert unstructured clinical dictation into a complete and valid JSON object that matches the provided schema EXACTLY.
+- You MUST populate EVERY field in the schema.
+- For fields where information is missing from the text, you must infer a logical and safe default (e.g., `usageLimit: 1`, `timing: 'with meals'`).
+- The 'quantity' MUST be a calculated, purchasable amount (e.g., if frequency is 'twice daily' for '7 days', quantity is '14 tablets').
+- Your response MUST be ONLY the JSON object, with no extra text, markdown, or explanations.
+"""
+
+def create_final_prescription_prompt(transcription: str, age: int = 30, weight: float = 70.0) -> str:
+    default_expiry = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+    json_schema = {
+      "patientEmail": "<infer or leave as 'patient@example.com'>", "patientMobile": "<infer or leave as '+1234567890'>",
+      "age": age, "weight": weight, "height": "<infer a reasonable height in cm or provide a default like 170>",
+      "usageLimit": 1, "expiresAt": f"<default to '{default_expiry}'>",
+      "instructions": "<provide a brief, general instruction based on the context>",
+      "medications": [{
+          "name": "<name of the medication>", "dosage": "<e.g., 500mg>",
+          "quantity": "<CALCULATE total units to buy, e.g., '14 capsules'>",
+          "frequency": "<e.g., twice daily>", "timing": "<e.g., with meals>",
+          "duration": "<e.g., 7 days>", "instructions": "<specific instructions for this medication>"
+      }]
+    }
+    return f"""
+Task: Populate the following JSON schema based on the provided clinical transcription.
+Transcription: "{transcription}"
+Patient Info: - Age: {age} - Weight: {weight} kg
+Strict JSON Schema to fill:
+{json.dumps(json_schema, indent=2)}
+Remember the rules:
+1. Fill ALL fields. 2. Calculate 'quantity' based on frequency and duration.
+3. Your response MUST be the JSON object ONLY.
+"""
+
 class MedicalLLM:
     def __init__(self, ollama_url: str = "http://localhost:11434"):
-        """Initialize the medical LLM system"""
         self.ollama_url = ollama_url
-        self.model_name = "gpt-oss:20b"
+        self.model_name = os.getenv("OLLAMA_MODEL", "meditron:7b")
         self._ensure_model_available()
     
     def _ensure_model_available(self):
-        """Ensure Llama 3.2 model is available in Ollama"""
         try:
-            response = requests.get(f"{self.ollama_url}/api/tags")
-            if response.status_code == 200:
-                models = response.json().get("models", [])
-                model_names = [model["name"] for model in models]
-                
-                if self.model_name not in model_names:
-                    logger.warning(f"Model {self.model_name} not found. Available models: {model_names}")
-                    logger.info("Please run: ollama pull gpt-oss:20b")
-                else:
-                    logger.info(f"✅ Model {self.model_name} is available")
+            import ollama
+            
+            # Test connection first
+            try:
+                response = ollama.list()
+                logger.info("✅ Successfully connected to Ollama")
+            except Exception as conn_error:
+                logger.error(f"❌ Could not connect to Ollama: {conn_error}")
+                logger.error("Make sure Ollama is running: 'ollama serve'")
+                return
+            
+            # Parse models more robustly
+            models = response.get('models', []) if isinstance(response, dict) else []
+            model_names = []
+            
+            for m in models:
+                if isinstance(m, dict):
+                    # Try different possible keys for model name
+                    name = m.get('name') or m.get('model') or m.get('id')
+                    if name:
+                        model_names.append(name)
+                        # Also add base name without tag if it has one
+                        if ':' in name:
+                            base_name = name.split(':')[0]
+                            model_names.append(base_name)
+            
+            logger.info(f"Available models: {model_names}")
+            
+            if not model_names:
+                logger.warning("No Ollama models found. Please pull a model:")
+                logger.warning("For medical use: ollama pull meditron:7b")
+                logger.warning("Or general use: ollama pull llama3.2:latest")
+                return
+            
+            # Check if our desired model exists (with flexible matching)
+            model_found = False
+            for available_model in model_names:
+                if (self.model_name == available_model or 
+                    self.model_name.split(':')[0] == available_model.split(':')[0]):
+                    self.model_name = available_model
+                    model_found = True
+                    break
+            
+            if not model_found:
+                logger.warning(f"Model '{self.model_name}' not found. Using '{model_names[0]}' instead.")
+                logger.warning(f"To use meditron, run: ollama pull meditron:7b")
+                self.model_name = model_names[0]
             else:
-                logger.error("❌ Cannot connect to Ollama. Please ensure Ollama is running.")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"❌ Ollama connection failed: {e}")
-    
-    def analyze_symptoms(self, symptoms: List[str], age: int = 25) -> Dict:
-        """
-        Analyze symptoms and predict possible diseases
-        """
-        symptoms_text = ", ".join(symptoms)
-        
-        prompt = f"""
-        As a medical AI assistant, analyze these symptoms and provide:
-        1. Possible diseases/conditions
-        2. Recommended medications
-        3. Dosage based on age {age}
-        4. Instructions for taking medications
-        
-        Symptoms: {symptoms_text}
-        Patient Age: {age}
-        
-        Respond in JSON format:
-        {{
-            "possible_diseases": ["disease1", "disease2"],
-            "recommended_drugs": [
-                {{
-                    "drug": "drug_name",
-                    "dosage": "dosage_info",
-                    "instructions": "how_to_take",
-                    "reason": "why_this_drug"
-                }}
-            ],
-            "general_advice": "general_medical_advice"
-        }}
-        """
-        
-        try:
-            response = self._call_ollama(prompt)
-            return self._parse_medical_response(response)
+                logger.info(f"✅ LLM Model '{self.model_name}' is available.")
+                
+        except ImportError:
+            logger.error("❌ 'ollama' package not installed. Run: pip install ollama")
         except Exception as e:
-            logger.error(f"LLM analysis failed: {e}")
-            return self._fallback_analysis(symptoms, age)
-    
-    def get_drug_recommendations(self, disease: str, age: int = 25) -> List[Dict]:
-        """
-        Get drug recommendations for a specific disease
-        """
-        prompt = f"""
-        As a medical AI, recommend appropriate medications for {disease} in a {age}-year-old patient.
-        
-        Provide:
-        1. Primary medication
-        2. Alternative medications
-        3. Dosage information
-        4. Instructions
-        5. Contraindications
-        
-        Respond in JSON format:
-        {{
-            "primary_drug": {{
-                "name": "drug_name",
-                "dosage": "dosage_info",
-                "instructions": "how_to_take"
-            }},
-            "alternatives": [
-                {{
-                    "name": "drug_name",
-                    "dosage": "dosage_info",
-                    "instructions": "how_to_take"
-                }}
-            ],
-            "contraindications": ["warning1", "warning2"]
-        }}
-        """
-        
+            logger.error(f"❌ Unexpected error checking Ollama: {e}")
+
+    def generate_full_prescription(self, transcription: str, age: int, weight: float) -> Dict:
+        prompt = create_final_prescription_prompt(transcription, age, weight)
         try:
-            response = self._call_ollama(prompt)
-            return self._parse_drug_response(response)
+            response_text = self._call_ollama(prompt)
+            return self._parse_response(response_text)
         except Exception as e:
-            logger.error(f"Drug recommendation failed: {e}")
-            return self._fallback_drug_recommendation(disease, age)
-    
-    def analyze_drug_interactions(self, drugs: List[str], age: int = 25, weight: float = 70.0) -> Dict:
-        """
-        Analyze potential drug interactions between multiple medications
-        """
-        drugs_text = ", ".join(drugs)
-        
-        prompt = f"""
-        As a medical AI assistant, analyze these medications for potential drug interactions:
-        
-        Medications: {drugs_text}
-        Patient Age: {age}
-        Patient Weight: {weight} kg
-        
-        Check for:
-        1. Pharmacokinetic interactions (absorption, distribution, metabolism, excretion)
-        2. Pharmacodynamic interactions (additive, synergistic, or antagonistic effects)
-        3. Contraindications
-        4. Severity levels (Low, Moderate, High)
-        5. Clinical recommendations
-        
-        Respond in JSON format:
-        {{
-            "interactions": [
-                {{
-                    "drug1": "drug_name",
-                    "drug2": "drug_name",
-                    "severity": "High/Moderate/Low",
-                    "description": "interaction_description",
-                    "recommendation": "clinical_recommendation"
-                }}
-            ],
-            "summary": "overall_assessment",
-            "contraindications": ["warning1", "warning2"]
-        }}
-        """
-        
-        try:
-            response = self._call_ollama(prompt)
-            return self._parse_interaction_response(response)
-        except Exception as e:
-            logger.error(f"Drug interaction analysis failed: {e}")
-            return self._fallback_interaction_analysis(drugs, age, weight)
+            logger.error(f"LLM prescription generation failed: {e}")
+            return self._create_fallback_prescription(transcription, age, weight)
     
     def _call_ollama(self, prompt: str) -> str:
-        """Call Ollama API using the correct format"""
-        payload = {
-            "model": self.model_name,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "temperature": 0.3,  # Lower temperature for medical accuracy
-                "top_p": 0.9,
-                "num_predict": 1000  # Use num_predict instead of max_tokens
-            }
-        }
-        
-        response = requests.post(
-            f"{self.ollama_url}/api/generate",
-            json=payload,
-            timeout=60  # Increased timeout for larger model
-        )
-        
-        if response.status_code == 200:
-            return response.json().get("response", "")
-        else:
-            raise Exception(f"Ollama API error: {response.status_code} - {response.text}")
-    
-    def _parse_medical_response(self, response: str) -> Dict:
-        """Parse LLM response for medical analysis"""
         try:
-            # Try to extract JSON from response
-            start_idx = response.find('{')
-            end_idx = response.rfind('}') + 1
-            
-            if start_idx != -1 and end_idx != -1:
-                json_str = response[start_idx:end_idx]
-                return json.loads(json_str)
-            else:
-                return self._fallback_analysis([], 25)
-        except json.JSONDecodeError:
-            return self._fallback_analysis([], 25)
-    
-    def _parse_drug_response(self, response: str) -> List[Dict]:
-        """Parse LLM response for drug recommendations"""
+            import ollama
+        except ImportError:
+            raise Exception("ollama package not installed")
+        
         try:
-            start_idx = response.find('{')
-            end_idx = response.rfind('}') + 1
-            
-            if start_idx != -1 and end_idx != -1:
-                json_str = response[start_idx:end_idx]
-                data = json.loads(json_str)
-                return [data.get("primary_drug", {})] + data.get("alternatives", [])
-            else:
-                return self._fallback_drug_recommendation("", 25)
-        except json.JSONDecodeError:
-            return self._fallback_drug_recommendation("", 25)
-    
-    def _fallback_analysis(self, symptoms: List[str], age: int) -> Dict:
-        """Fallback analysis when LLM fails"""
-        return {
-            "possible_diseases": ["general illness"],
-            "recommended_drugs": [
-                {
-                    "drug": "paracetamol",
-                    "dosage": "500mg every 6-8 hours" if age >= 18 else "10-15mg/kg every 6-8 hours",
-                    "instructions": "Take with food. Consult doctor if symptoms persist.",
-                    "reason": "General pain and fever relief"
+            logger.info(f"Calling Ollama with model: {self.model_name}")
+            response = ollama.chat(
+                model=self.model_name,
+                messages=[
+                    {'role': 'system', 'content': SYSTEM_PROMPT},
+                    {'role': 'user', 'content': prompt}
+                ],
+                options={
+                    "temperature": 0.1,
+                    "timeout": 30  # 30 second timeout
                 }
-            ],
-            "general_advice": "Rest, stay hydrated, and consult a healthcare provider if symptoms worsen."
-        }
-    
-    def _parse_interaction_response(self, response: str) -> Dict:
-        """Parse LLM response for drug interaction analysis"""
+            )
+            
+            if isinstance(response, dict):
+                if 'message' in response and isinstance(response['message'], dict):
+                    content = response['message'].get('content', '')
+                    if content:
+                        logger.info("✅ Got response from Ollama")
+                        return content
+                if 'content' in response:
+                    content = response.get('content', '')
+                    if content:
+                        logger.info("✅ Got response from Ollama")
+                        return content
+            
+            raise ValueError('Empty or invalid response from ollama')
+            
+        except Exception as e:
+            logger.error(f"Error calling Ollama: {e}")
+            raise
+
+    def _parse_response(self, response: str) -> Dict:
         try:
+            # Clean the response
+            response = response.strip()
+            
+            # Find JSON object
             start_idx = response.find('{')
             end_idx = response.rfind('}') + 1
             
-            if start_idx != -1 and end_idx != -1:
+            if start_idx != -1 and end_idx != 0:
                 json_str = response[start_idx:end_idx]
-                return json.loads(json_str)
+                parsed = json.loads(json_str)
+                logger.info("✅ Successfully parsed LLM response")
+                return parsed
             else:
-                return self._fallback_interaction_analysis([], 25, 70.0)
-        except json.JSONDecodeError:
-            return self._fallback_interaction_analysis([], 25, 70.0)
-    
-    def _fallback_interaction_analysis(self, drugs: List[str], age: int, weight: float) -> Dict:
-        """Fallback interaction analysis when LLM fails"""
-        return {
-            "interactions": [],
-            "summary": "Unable to analyze drug interactions automatically. Please consult a pharmacist or physician.",
-            "contraindications": ["Always consult healthcare provider before combining medications"]
-        }
-    
-    def _fallback_drug_recommendation(self, disease: str, age: int) -> List[Dict]:
-        """Fallback drug recommendation when LLM fails"""
-        return [
-            {
-                "name": "paracetamol",
-                "dosage": "500mg every 6-8 hours" if age >= 18 else "10-15mg/kg every 6-8 hours",
-                "instructions": "Take with food. Consult doctor for proper diagnosis."
-            }
-        ]
+                raise ValueError("No JSON object found in response")
+                
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to decode JSON from LLM response: {response[:200]}... | Error: {e}")
+            raise ValueError("LLM response was not valid JSON")
 
-def test_medical_llm():
-    """Test the medical LLM system"""
-    print("🤖 Testing Medical LLM System")
-    print("=" * 50)
-    
-    # Initialize LLM
-    llm = MedicalLLM()
-    
-    # Test symptom analysis
-    symptoms = ["fever", "cough", "headache"]
-    print(f"\n🔍 Analyzing symptoms: {symptoms}")
-    
-    analysis = llm.analyze_symptoms(symptoms, age=30)
-    print(f"📊 Analysis: {json.dumps(analysis, indent=2)}")
-    
-    # Test drug recommendations
-    disease = "hypertension"
-    print(f"\n💊 Getting drug recommendations for: {disease}")
-    
-    drugs = llm.get_drug_recommendations(disease, age=45)
-    print(f"💉 Recommendations: {json.dumps(drugs, indent=2)}")
+    def _create_fallback_prescription(self, transcription: str, age: int, weight: float) -> Dict:
+        """Create a basic prescription when LLM fails"""
+        logger.info("Creating fallback prescription")
+        default_expiry = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        return {
+            "patientEmail": "patient@example.com",
+            "patientMobile": "+1234567890",
+            "age": age,
+            "weight": weight,
+            "height": 170,
+            "usageLimit": 1,
+            "expiresAt": default_expiry,
+            "instructions": "Please follow the prescribed medication schedule and consult with your doctor if you have any concerns.",
+            "medications": [{
+                "name": "Consultation Required",
+                "dosage": "As prescribed",
+                "quantity": "1 consultation",
+                "frequency": "As needed",
+                "timing": "With consultation",
+                "duration": "As advised",
+                "instructions": f"Transcription: {transcription}. Please consult with doctor for proper prescription."
+            }]
+        }
 
 if __name__ == "__main__":
-    test_medical_llm()
+    llm = MedicalLLM()
+    test_transcription = "The patient has a bacterial infection. Put him on Amoxicillin 500mg, twice a day for seven days with meals. For the fever, he can take Ibuprofen as needed."
+    prescription_json = llm.generate_full_prescription(test_transcription, age=42, weight=85)
+    print(json.dumps(prescription_json, indent=2))

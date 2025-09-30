@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getShopHistory, getPrescriptionByShortId, markPrescriptionAsUsed } from '../../api/prescriptionService';
 import jsQR from 'jsqr';
 import { 
-  QrCode, Pill, User, Calendar, CheckCircle, XCircle, AlertTriangle, History, Camera, CameraOff, RotateCcw, Shield, Clock, FileText
+  QrCode, Pill, User, Calendar, CheckCircle, XCircle, AlertTriangle, History, Camera, CameraOff, RotateCcw, Shield, Clock
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -78,12 +78,14 @@ const ShopDashboard = () => {
       const { data } = await getShopHistory();
       setPrescriptionHistory(data);
     } catch (err) {
+      setError('Failed to fetch history.');
       console.error('Failed to fetch history:', err);
     }
   };
 
   const startScanner = () => {
     setError('');
+    setSuccess('');
     setScannedPrescription(null);
     setIsScanning(true);
   };
@@ -114,7 +116,10 @@ const ShopDashboard = () => {
       await markPrescriptionAsUsed(scannedPrescription._id);
       setSuccess('Medicine dispensed successfully!');
       setScannedPrescription(null);
-      fetchPrescriptionHistory();
+      // Refresh history after dispensing
+      if (activeTab === 'history') {
+        fetchPrescriptionHistory();
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to dispense medicine');
     } finally {
@@ -145,36 +150,39 @@ const ShopDashboard = () => {
       </div>
       <Header />
       <main className="p-6 max-w-6xl mx-auto relative z-10">
-        <div className="text-center mb-8"><h1 className="text-4xl font-bold">Pharmacy Dashboard</h1><p>Scan prescriptions securely</p></div>
+        <div className="text-center mb-8"><h1 className="text-4xl font-bold">Pharmacy Dashboard</h1><p>Scan and dispense prescriptions securely</p></div>
         {success && <div className="alert-success mb-6"><AlertDescription><CheckCircle className="w-5 h-5 mr-2" />{success}</AlertDescription></div>}
         {error && <div className="alert-error mb-6"><AlertDescription><AlertTriangle className="w-5 h-5 mr-2" />{error}</AlertDescription></div>}
 
-        <div className="flex space-x-4 mb-6">
-          <Button onClick={() => setActiveTab('scan')} className={activeTab === 'scan' ? 'button-style' : 'button-secondary'}><Camera className="w-4 h-4 mr-2" />Scan</Button>
-          <Button onClick={() => setActiveTab('history')} className={activeTab === 'history' ? 'button-style' : 'button-secondary'}><History className="w-4 h-4 mr-2" />History</Button>
+        <div className="flex justify-center space-x-4 mb-6 border-b">
+          <Button variant="ghost" onClick={() => setActiveTab('scan')} className={`pb-3 rounded-none ${activeTab === 'scan' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}><Camera className="w-4 h-4 mr-2" />Scan Prescription</Button>
+          <Button variant="ghost" onClick={() => setActiveTab('history')} className={`pb-3 rounded-none ${activeTab === 'history' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}><History className="w-4 h-4 mr-2" />Dispensing History</Button>
         </div>
 
         {activeTab === 'scan' && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fade-in">
             <Card className="card-style">
               <CardHeader><CardTitle><QrCode className="w-6 h-6 inline mr-2" />QR Code Scanner</CardTitle></CardHeader>
-              <CardContent>
-                {!isScanning && !scannedPrescription && <Button onClick={startScanner}>Start Scanner</Button>}
-                {isScanning && <div className="space-y-4"><video ref={videoRef} className="w-full rounded-lg" autoPlay playsInline /><Button onClick={stopScanner}><CameraOff className="w-4 h-4 mr-2" />Stop</Button></div>}
-                {isProcessing && <p>Processing...</p>}
+              <CardContent className="text-center">
+                {!isScanning && !scannedPrescription && <Button onClick={startScanner} className="button-style"><Camera className="w-4 h-4 mr-2" />Start Scanner</Button>}
+                {isScanning && <div className="space-y-4"><video ref={videoRef} className="w-full rounded-lg border" autoPlay playsInline /><Button onClick={stopScanner} variant="destructive"><CameraOff className="w-4 h-4 mr-2" />Stop Scanner</Button></div>}
               </CardContent>
             </Card>
 
+            {isProcessing && <p className="text-center">Processing...</p>}
+
             {scannedPrescription && (
-              <Card className="card-style">
+              <Card className="card-style animate-fade-in">
                 <CardHeader><CardTitle>Prescription Details</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                  <p><User className="w-4 h-4 inline mr-2" />Patient: {scannedPrescription.patientEmail}</p>
-                  <p><Calendar className="w-4 h-4 inline mr-2" />Expires: {new Date(scannedPrescription.expiresAt).toLocaleDateString()}</p>
-                  <p><Shield className="w-4 h-4 inline mr-2" />Usage: {scannedPrescription.used} / {scannedPrescription.usageLimit}</p>
-                  <div><Pill className="w-4 h-4 inline mr-2" />Medications: {scannedPrescription.medications.map(m => m.name).join(', ')}</div>
-                  <Button onClick={handleDispenseMedicine} disabled={isProcessing || getStatusConfig(scannedPrescription).status !== 'Active'}>Dispense</Button>
-                  <Button onClick={resetScanner} variant="outline">Scan Another</Button>
+                <CardContent className="space-y-3">
+                  <p><User className="w-4 h-4 inline mr-2 text-gray-500" /><strong>Patient:</strong> {scannedPrescription.patientId.name || 'N/A'}</p>
+                  <p><Calendar className="w-4 h-4 inline mr-2 text-gray-500" /><strong>Expires:</strong> {new Date(scannedPrescription.expiresAt).toLocaleDateString()}</p>
+                  <p><Shield className="w-4 h-4 inline mr-2 text-gray-500" /><strong>Usage:</strong> {scannedPrescription.used} / {scannedPrescription.usageLimit}</p>
+                  <div><Pill className="w-4 h-4 inline mr-2 text-gray-500" /><strong>Medications:</strong> {scannedPrescription.medications.map(m => m.name).join(', ')}</div>
+                  <div className="flex space-x-4 pt-4">
+                    <Button onClick={handleDispenseMedicine} disabled={isProcessing || getStatusConfig(scannedPrescription).status !== 'Active'} className="button-style flex-1"><CheckCircle className="w-4 h-4 mr-2" />Dispense</Button>
+                    <Button onClick={resetScanner} variant="outline" className="flex-1"><RotateCcw className="w-4 h-4 mr-2" />Scan Another</Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -182,12 +190,23 @@ const ShopDashboard = () => {
         )}
 
         {activeTab === 'history' && (
-          <Card className="card-style">
-            <CardHeader><CardTitle><History className="w-6 h-6 inline mr-2" />Dispensing History</CardTitle></CardHeader>
+          <Card className="card-style animate-fade-in">
+            <CardHeader><CardTitle><History className="w-6 h-6 inline mr-2" />Your Dispensing History</CardTitle></CardHeader>
             <CardContent>
-              {prescriptionHistory.length === 0 ? <p>No history</p> : (
-                <div className="space-y-2">
-                  {prescriptionHistory.map((p) => <div key={p._id} className="border p-2 rounded">RX #{p._id.slice(-6)} - Patient: {p.patientEmail}</div>)}
+              {prescriptionHistory.length === 0 ? <p className="text-center text-gray-500 py-8">You have not dispensed any prescriptions yet.</p> : (
+                <div className="space-y-4">
+                  {prescriptionHistory.map((p) => (
+                    <div key={p._id} className="border p-4 rounded-lg bg-gray-50/50 flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold">Prescription #{p._id.slice(-6)}</p>
+                        <p className="text-sm text-gray-600"><User className="w-3 h-3 inline mr-1" />Patient: {p.patientId?.name || 'Unknown'}</p>
+                      </div>
+                      <div className="text-right">
+                         <p className="text-sm text-gray-500"><Calendar className="w-3 h-3 inline mr-1" />Dispensed on</p>
+                         <p className="text-sm font-medium">{new Date(p.dispensedBy.find(d => d.pharmacistId === "YOUR_LOGGED_IN_USER_ID")?.dispensedAt || p.updatedAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>

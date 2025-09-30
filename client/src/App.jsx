@@ -11,6 +11,7 @@ import MyAccount from './pages/MyAccount';
 import ChatPage from './pages/ChatPage';
 import Scanner from './pages/Scanner';
 import OCRScannerPage from './components/shared/OCRScanner'; // Assuming this is a full-page component for now
+import EmergencyContact from './components/shared/emergencyContact';
 
 // Dashboards
 import AdminDashboard from './pages/dashboards/AdminDashboard';
@@ -66,6 +67,7 @@ function App() {
           <Route path="/my-account" element={<ProtectedRoute><MyAccount /></ProtectedRoute>} />
           <Route path="/scanner" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
           <Route path="/ocr-scanner" element={<ProtectedRoute><OCRScannerPage /></ProtectedRoute>} />
+          <Route path="/emergency-contact" element={<ProtectedRoute><EmergencyContact /></ProtectedRoute>} />
 
           {/* Role-specific routes */}
           <Route path="/chatbot" element={<ProtectedRoute roles={['patient']}><ChatPage /></ProtectedRoute>} />

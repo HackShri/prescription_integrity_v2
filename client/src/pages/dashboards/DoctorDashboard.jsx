@@ -132,37 +132,44 @@ const DoctorDashboard = () => {
           }
           
           const { data } = response;
-          
+
           if (data.transcription) {
-            setPrescription((prev) => ({ 
-              ...prev, 
-              instructions: prev.instructions ? 
-                `${prev.instructions} ${data.transcription}` : 
-                data.transcription 
+            // Prefer AI-provided instructions if available; otherwise append transcription
+            const aiPrescription = data.prescriptionData || data.prescription || {};
+            const aiInstructions = aiPrescription.instructions || '';
+
+            setPrescription((prev) => ({
+              ...prev,
+              instructions: aiInstructions
+                ? (prev.instructions ? `${prev.instructions} ${aiInstructions}` : aiInstructions)
+                : (prev.instructions ? `${prev.instructions} ${data.transcription}` : data.transcription)
             }));
-            
-            // If smart mode and prescription generated, auto-populate medications
-            if (smartMode && data.prescription && data.prescription.medications) {
-              const smartMedications = data.prescription.medications.map(med => ({
+
+            // If smart mode and AI returned medications, auto-populate with full fields
+            const aiMeds = (aiPrescription && Array.isArray(aiPrescription.medications)) ? aiPrescription.medications : [];
+            if (smartMode && aiMeds.length > 0) {
+              const smartMedications = aiMeds.map(med => ({
                 name: med.name,
                 dosage: med.dosage,
-                frequency: med.frequency,
-                instructions: med.instructions
+                quantity: typeof med.quantity === 'number' ? med.quantity : parseInt(String(med.quantity).replace(/[^0-9]/g, ''), 10) || '',
+                frequency: med.frequency || '',
+                timing: med.timing || '',
+                duration: med.duration || '',
+                instructions: med.instructions || ''
               }));
-              
+
               setPrescription((prev) => ({
                 ...prev,
                 medications: [...prev.medications, ...smartMedications]
               }));
-              
-              // Show success message
+
               setError('');
               setTimeout(() => {
-                setError(''); // Clear any previous errors
+                setError('');
               }, 100);
             }
-            
-            setError(''); // Clear any previous errors
+
+            setError('');
           } else {
             setError('No speech detected in recording');
           }

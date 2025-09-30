@@ -10,11 +10,11 @@ import { Button } from '../../components/ui/button';
 import Header from '../../components/layout/Header';
 import PillTimeline from '../../components/shared/PillTimeline';
 import useSpeechRecognition from '../../hooks/useSpeechRecognition';
-import { 
-  MessageCircle, 
-  FileText, 
-  Clock, 
-  Pill, 
+import {
+  MessageCircle,
+  FileText,
+  Clock,
+  Pill,
   AlertTriangle,
   CheckCircle,
   X,
@@ -95,10 +95,10 @@ const PatientDashboard = () => {
 
   const getStatusConfig = (prescription) => {
     if (new Date(prescription.expiresAt) < new Date()) {
-        return { status: 'Expired', icon: XCircle, color: 'text-red-500' };
+      return { status: 'Expired', icon: XCircle, color: 'text-red-500' };
     }
     if (prescription.used >= prescription.usageLimit) {
-        return { status: 'Completed', icon: CheckCircle, color: 'text-green-500' };
+      return { status: 'Completed', icon: CheckCircle, color: 'text-green-500' };
     }
     return { status: 'Active', icon: Clock, color: 'text-blue-500' };
   };
@@ -121,7 +121,7 @@ const PatientDashboard = () => {
     <div className="min-h-screen gradient-primary relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-72 h-72 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-20 right-20 w-72 h-72 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
       <Header />
       <main className="p-6 max-w-6xl mx-auto relative z-10">
@@ -150,16 +150,20 @@ const PatientDashboard = () => {
             <CardHeader className="text-center"><CardTitle>OCR Scanner</CardTitle></CardHeader>
             <CardContent><Button asChild className="w-full button-secondary"><Link to="/ocr-scanner">Scan Prescription</Link></Button></CardContent>
           </Card>
+          <Card className="card-style hover:scale-105 transition-all duration-300">
+            <CardHeader className="text-center"><CardTitle>Emergency contact</CardTitle></CardHeader>
+            <CardContent><Button asChild className="w-full button-secondary"><Link to="/emergency-contact">Emergency</Link></Button></CardContent>
+          </Card>
         </div>
 
         <PillTimelineModal open={showPillModal} onClose={() => setShowPillModal(false)} />
 
         {selectedPrescription && (() => {
-           const status = getStatusConfig(selectedPrescription);
-           const StatusIcon = status.icon;
-           return (
-             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-               <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-white">
+          const status = getStatusConfig(selectedPrescription);
+          const StatusIcon = status.icon;
+          return (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-white">
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle className="flex items-center space-x-2"><StatusIcon className={`w-5 h-5 ${status.color}`} /><span>Prescription Details</span></CardTitle>
@@ -174,14 +178,14 @@ const PatientDashboard = () => {
                     </div>
                     <div className="flex flex-col items-center">
                       <h3 className="font-semibold mb-2">QR Code</h3>
-                      <QRCode value={generateQRValue(selectedPrescription)} size={150}/>
+                      <QRCode value={generateQRValue(selectedPrescription)} size={150} />
                     </div>
                   </div>
                   <Button onClick={() => handleDownloadPrescription(selectedPrescription._id)}><Download className="w-4 h-4 mr-2" />Download PDF</Button>
                 </CardContent>
-               </Card>
-             </div>
-           );
+              </Card>
+            </div>
+          );
         })()}
 
         <h2 className="text-2xl font-bold text-gray-900 mb-4">My Prescriptions</h2>
