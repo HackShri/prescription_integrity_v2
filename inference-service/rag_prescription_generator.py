@@ -1,191 +1,119 @@
 import json
 import logging
 from typing import Dict, List
-import os
 
-from langchain_ollama import OllamaLLM as Ollama
-from langchain_huggingface import HuggingFaceEmbeddings
+import os
 from langchain_community.vectorstores import Chroma
-from langchain.prompts import PromptTemplate
-from langchain.schema.runnable import RunnablePassthrough
-from langchain.schema.output_parser import StrOutputParser
-from langchain.docstore.document import Document
 from langchain_community.vectorstores.utils import filter_complex_metadata
+from langchain.docstore.document import Document
+from langchain.prompts import PromptTemplate
+from langchain.schema.output_parser import StrOutputParser
+from langchain.schema.runnable import RunnablePassthrough
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama import OllamaLLM as Ollama
+
+# Import new parsers
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.pydantic_v1 import BaseModel, Field
+
 
 logger = logging.getLogger(__name__)
 
-# Disable external telemetry/noise from Chroma/PostHog in restricted networks
-os.environ.setdefault("ANONYMIZED_TELEMETRY", "false")
-os.environ.setdefault("CHROMA_TELEMETRY_IMPLEMENTATION", "none")
-os.environ.setdefault("POSTHOG_DISABLED", "true")
+# --- Pydantic Models for Structured Output ---
+# Define the precise JSON structure you want the LLM to output.
+# This makes parsing reliable and predictable.
+class Medication(BaseModel):
+    name: str = Field(description="The exact drug name from the context.")
+    dosage: str = Field(description="A standard dosage, e.g., '500mg' or '10ml'.")
+    frequency: str = Field(description="How often to take the medication, e.g., 'twice daily'.")
+    timing: str = Field(description="When to take the medication, e.g., 'after meals'.")
+    duration: str = Field(description="The total duration of the treatment, e.g., '7 days'.")
+    quantity: int = Field(description="Total number of units to dispense, calculated from frequency and duration.")
+    instructions: str = Field(description="A brief, important instruction for this specific medication.")
 
-for noisy_logger in [
-    "chromadb.telemetry",
-    "chromadb.telemetry.product.posthog",
-    "posthog",
-    "urllib3.connectionpool",
-]:
-    try:
-        logging.getLogger(noisy_logger).setLevel(logging.ERROR)
-    except Exception:
-        pass
+class PrescriptionOutput(BaseModel):
+    medications: List[Medication] = Field(description="A list of all the prescribed medications.")
 
+
+# --- Main RAG Class ---
 class RAGPrescriptionGenerator:
     def __init__(self, data_path="medical_data.json"):
         logger.info("Initializing RAG Prescription Generator...")
         self.model_name = os.getenv("OLLAMA_MODEL", "meditron:7b")
-        # Resolve data_path relative to this file if a relative path was passed
+        
         if not os.path.isabs(data_path):
             base_dir = os.path.dirname(os.path.abspath(__file__))
             data_path = os.path.join(base_dir, data_path)
 
-        # Fail fast and provide a clear message if the KB is missing
         if not os.path.exists(data_path):
             raise FileNotFoundError(f"Knowledge base file not found: {data_path}")
 
         self.llm = Ollama(model=self.model_name, temperature=0.1, format="json")
         self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        # Load full KB and keep a lookup map by condition_name for rehydration later
+        
         self._raw_kb = self._load_data(data_path)
-        # Normalize condition names for robust lookups (strip + lower)
-        def _norm_key(v):
-            return v.strip().lower() if isinstance(v, str) else ""
-
         self._condition_by_name = {
-            _norm_key(item.get("condition_name")): item for item in self._raw_kb if item.get("condition_name")
+            item.get("condition_name", "").strip().lower(): item for item in self._raw_kb if item.get("condition_name")
         }
+        
         self.vector_store = self._create_vector_store_from_items(self._raw_kb)
-        self.retriever = self.vector_store.as_retriever(search_kwargs={"k": 1})
+        # ENHANCEMENT: Increased retriever 'k' to 3 to get more context
+        self.retriever = self.vector_store.as_retriever(search_kwargs={"k": 3})
+
+        # ENHANCEMENT: Switched to the more reliable JsonOutputParser
+        self.parser = JsonOutputParser(pydantic_object=PrescriptionOutput)
         self.prompt_template = self._get_prompt_template()
         
         self.rag_chain = (
-            RunnablePassthrough.assign(context=self.retriever)
+            RunnablePassthrough.assign(context=(lambda x: x["context"]))
             | self.prompt_template
             | self.llm
-            | StrOutputParser()
+            | self.parser
         )
-        logger.info("✅ RAG Generator initialized successfully.")
+        logger.info("✅ RAG Generator initialized successfully with JSON parser.")
 
     def _load_data(self, data_path: str):
         logger.info(f"Loading knowledge base from {data_path}...")
         try:
             with open(data_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                # Ensure the KB is a list of items
-                if isinstance(data, dict):
-                    # If single object present, wrap in a list
-                    return [data]
-                if not isinstance(data, list):
-                    raise ValueError(f"Unexpected KB format (expected list or dict) in {data_path}")
-                return data
+                return json.load(f)
         except Exception as e:
             logger.error(f"❌ Failed to load or parse {data_path}: {e}")
             raise
 
     def _normalize(self, s: str) -> str:
-        if not s:
-            return ""
-        return s.strip().lower()
+        return s.strip().lower() if s else ""
 
     def _find_best_by_text(self, text: str):
-        """Simple fallback matching: tries to find a KB item whose condition_name or symptoms appear in the text."""
         t = text.lower()
-        # 1) exact condition name substring
         for item in self._raw_kb:
             name = (item.get("condition_name") or "").lower()
             if name and name in t:
                 return item
-
-        # 2) check symptoms overlap (first-match)
         for item in self._raw_kb:
-            syms = item.get("symptoms", [])
-            for s in syms:
+            for s in item.get("symptoms", []):
                 if s and s.lower() in t:
                     return item
-
         return None
-
-    def _calculate_quantity(self, frequency: str, duration: str, default_qty):
-        """Try to derive a numeric quantity from frequency and duration. Return default if ambiguous."""
-        import re
-
-        # parse days from duration (e.g., '7 days')
-        days = None
-        if duration:
-            m = re.search(r"(\d+)", duration)
-            if m:
-                try:
-                    days = int(m.group(1))
-                except Exception:
-                    days = None
-
-        if days is None:
-            days = 5
-
-        per_day = None
-        if frequency:
-            f = frequency.lower()
-            if "once" in f and "daily" in f or f == "once daily" or "once" == f:
-                per_day = 1
-            elif "twice" in f or "two" in f or "2" in f:
-                per_day = 2
-            elif "thrice" in f or "three" in f or "3" in f:
-                per_day = 3
-            elif "every" in f:
-                m = re.search(r"every\s*(\d+)\s*hour", f)
-                if m:
-                    hrs = int(m.group(1))
-                    if hrs > 0:
-                        per_day = max(1, 24 // hrs)
-            # leave per_day None for 'as needed' or unusual phrases
-
-        if per_day is None:
-            return default_qty
-
-        try:
-            qty = int(per_day) * int(days)
-            return qty
-        except Exception:
-            return default_qty
 
     def _create_vector_store_from_items(self, items: List[Dict]):
         documents = []
         for item in items:
             search_content = f"Condition: {item['condition_name']}. Symptoms: {', '.join(item.get('symptoms', []))}."
-            # Keep only simple metadata to avoid Chroma rejection; we rehydrate by condition_name later
             simple_metadata = {"condition_name": item.get("condition_name", "")}
             documents.append(Document(page_content=search_content, metadata=simple_metadata))
-
         filtered_documents = filter_complex_metadata(documents)
         logger.info(f"Creating vector store with {len(filtered_documents)} documents...")
         return Chroma.from_documents(documents=filtered_documents, embedding=self.embeddings)
 
     def _get_prompt_template(self) -> PromptTemplate:
+        # This new prompt works with the JsonOutputParser
         template = """
-        You are a medical prescription assistant. Based on the provided context, generate a JSON array of medications.
-
-        For EACH drug name listed in the context's `suggested_drugs`, create one object with ALL of the following keys:
-        - name: The exact drug name from suggested_drugs
-        - dosage: Standard dosage (e.g., "500mg" for Acetaminophen, "10mg" for Cetirizine, "200mg" for Ibuprofen)
-        - frequency: Standard frequency (e.g., "twice daily", "once daily", "thrice daily")
-        - timing: When to take (e.g., "after meals", "before breakfast", "with meals")
-        - duration: Treatment duration (e.g., "5 days", "7 days", "3 days")
-        - quantity: Total quantity needed (calculate based on frequency and duration)
-        - instructions: Brief safety instruction
-
-        Use these standard dosages:
-        - Acetaminophen: 500mg
-        - Ibuprofen: 200-400mg
-        - Cetirizine: 10mg
-        - Loratadine: 10mg
-        - Antacid: 10ml
-        - Ondansetron: 4mg
-        - Loperamide: 2mg
-        - Naproxen: 250mg
-        - Hydrocortisone Cream: Apply thin layer
-        - Dextromethorphan Syrup: 10ml
-
-        Output ONLY a raw JSON array (no comments, no backticks, no extra text).
+        You are a precise medical data structuring tool. Based on the provided CONTEXT, generate a JSON object for the user's prescription request.
+        The CONTEXT contains suggested drugs. Create a JSON object with a single key "medications" which contains a list of medication objects.
+        For EACH drug in the CONTEXT's `suggested_drugs` list, create a full medication object.
+        Infer logical, standard details for dosage, frequency, timing, etc., based on the drug name.
+        Calculate the 'quantity' field correctly based on the frequency and duration.
 
         CONTEXT:
         {context}
@@ -193,184 +121,102 @@ class RAGPrescriptionGenerator:
         USER'S DESCRIPTION:
         "{question}"
 
-        medications:
+        {format_instructions}
         """
-        return PromptTemplate(template=template, input_variables=["context", "question"])
-
-    def _get_default_medication_details(self, drug_name: str) -> Dict:
-        """Returns default medication details based on drug name"""
-        medication_defaults = {
-            "Acetaminophen": {
-                "dosage": "500mg",
-                "frequency": "every 6 hours",
-                "timing": "after meals",
-                "duration": "5 days",
-                "quantity": 20,
-                "instructions": "Do not exceed 4g per day. Take with water."
-            },
-            "Ibuprofen": {
-                "dosage": "400mg",
-                "frequency": "twice daily",
-                "timing": "after meals",
-                "duration": "5 days",
-                "quantity": 10,
-                "instructions": "Take with food to avoid stomach upset."
-            },
-            "Cetirizine": {
-                "dosage": "10mg",
-                "frequency": "once daily",
-                "timing": "at bedtime",
-                "duration": "7 days",
-                "quantity": 7,
-                "instructions": "May cause drowsiness. Avoid driving."
-            },
-            "Loratadine": {
-                "dosage": "10mg",
-                "frequency": "once daily",
-                "timing": "with breakfast",
-                "duration": "7 days",
-                "quantity": 7,
-                "instructions": "Non-drowsy antihistamine."
-            },
-            "Antacid": {
-                "dosage": "10ml",
-                "frequency": "thrice daily",
-                "timing": "after meals",
-                "duration": "5 days",
-                "quantity": 1,
-                "instructions": "Shake well before use."
-            },
-            "Ondansetron": {
-                "dosage": "4mg",
-                "frequency": "twice daily",
-                "timing": "as needed",
-                "duration": "3 days",
-                "quantity": 6,
-                "instructions": "For nausea and vomiting."
-            },
-            "Loperamide": {
-                "dosage": "2mg",
-                "frequency": "after each loose stool",
-                "timing": "as needed",
-                "duration": "2 days",
-                "quantity": 10,
-                "instructions": "Do not exceed 16mg per day."
-            },
-            "Naproxen": {
-                "dosage": "250mg",
-                "frequency": "twice daily",
-                "timing": "with meals",
-                "duration": "5 days",
-                "quantity": 10,
-                "instructions": "Take with food. For pain and inflammation."
-            },
-            "Hydrocortisone Cream": {
-                "dosage": "0.5% cream",
-                "frequency": "twice daily",
-                "timing": "morning and evening",
-                "duration": "7 days",
-                "quantity": 1,
-                "instructions": "Apply thin layer to affected area."
-            },
-            "Dextromethorphan Syrup": {
-                "dosage": "10ml",
-                "frequency": "every 6 hours",
-                "timing": "as needed",
-                "duration": "5 days",
-                "quantity": 1,
-                "instructions": "For dry cough. Do not exceed 40ml per day."
-            }
-        }
+        return PromptTemplate(
+            template=template,
+            input_variables=["context", "question"],
+            partial_variables={"format_instructions": self.parser.get_format_instructions()},
+        )
         
-        # Return defaults if found, otherwise generic defaults
+    def _get_default_medication_details(self, drug_name: str) -> Dict:
+        """Returns a dictionary of default details for a given drug name."""
+        medication_defaults = {
+            "Acetaminophen": {"dosage": "500mg", "frequency": "every 6 hours", "timing": "as needed for fever", "duration": "3 days", "quantity": 12, "instructions": "Do not exceed 4000mg per day."},
+            "Ibuprofen": {"dosage": "400mg", "frequency": "twice daily", "timing": "with meals", "duration": "5 days", "quantity": 10, "instructions": "Take with food to prevent stomach upset."},
+            "Cetirizine": {"dosage": "10mg", "frequency": "once daily", "timing": "in the evening", "duration": "7 days", "quantity": 7, "instructions": "May cause drowsiness."},
+            "Loratadine": {"dosage": "10mg", "frequency": "once daily", "timing": "in the morning", "duration": "7 days", "quantity": 7, "instructions": "Non-drowsy formula."},
+            "Antacid": {"dosage": "10ml", "frequency": "thrice daily", "timing": "after meals", "duration": "5 days", "quantity": 1, "instructions": "Shake well before use."},
+            "Ondansetron": {"dosage": "4mg", "frequency": "twice daily", "timing": "as needed for nausea", "duration": "3 days", "quantity": 6, "instructions": "Allow to dissolve on tongue."},
+            "Loperamide": {"dosage": "2mg", "frequency": "after each loose stool", "timing": "as needed", "duration": "2 days", "quantity": 8, "instructions": "Do not exceed 16mg per day."},
+            "Naproxen": {"dosage": "250mg", "frequency": "twice daily", "timing": "with meals", "duration": "5 days", "quantity": 10, "instructions": "For pain and inflammation."},
+            "Hydrocortisone Cream": {"dosage": "1% cream", "frequency": "twice daily", "timing": "morning and evening", "duration": "7 days", "quantity": 1, "instructions": "Apply a thin layer to the affected area."},
+            "Dextromethorphan Syrup": {"dosage": "10ml", "frequency": "every 6 hours", "timing": "as needed for cough", "duration": "5 days", "quantity": 1, "instructions": "For dry, non-productive cough only."}
+        }
         return medication_defaults.get(drug_name, {
-            "dosage": "as directed",
-            "frequency": "twice daily",
-            "timing": "after meals",
-            "duration": "5 days",
-            "quantity": 10,
-            "instructions": "Take as directed by physician."
+            "dosage": "As directed", "frequency": "As directed", "timing": "As directed", 
+            "duration": "As directed", "quantity": 1, "instructions": "Follow physician's instructions."
         })
 
     def generate(self, transcription: str) -> Dict:
+        """
+        The main function to generate a prescription from a doctor's transcription.
+        This new version uses a more robust JSON parser and includes fallback logic.
+        """
         logger.info(f"Generating prescription for: '{transcription}'")
         try:
-            # Retrieve matching condition from knowledge base
+            # Step 1: Retrieve matching documents from the vector store.
             retrieved_docs = self.retriever.invoke(transcription)
             if not retrieved_docs:
+                logger.warning("Could not find a matching condition in the knowledge base.")
                 return {"error": "Could not find a matching condition in the knowledge base."}
-            
+
+            # Step 2: Rehydrate the full context from our knowledge base map.
             retrieved_meta = retrieved_docs[0].metadata or {}
             condition_name = retrieved_meta.get("condition_name", "Unknown")
-            # Normalize lookup key to match how we stored _condition_by_name
-            lookup_key = self._normalize(condition_name)
-            full_context = self._condition_by_name.get(lookup_key, {})
+            full_context = self._condition_by_name.get(self._normalize(condition_name))
 
-            # If mapping missed (case/spacing differences), try a text-based fallback
+            # Step 3: If lookup fails, try a simple text-based fallback search.
             if not full_context:
-                fallback = self._find_best_by_text(transcription)
-                if fallback:
-                    full_context = fallback
-                    condition_name = fallback.get("condition_name", condition_name)
-            suggested_drugs = full_context.get("suggested_drugs", [])
+                logger.warning(f"Vector search found '{condition_name}', but lookup failed. Trying text fallback.")
+                full_context = self._find_best_by_text(transcription)
+                if not full_context:
+                    logger.error("Fallback search also failed. Cannot determine context.")
+                    return {"error": "Could not determine the medical context from the transcription."}
+                condition_name = full_context.get("condition_name", "Unknown")
+
             general_advice = full_context.get("general_advice", "Follow medication instructions carefully.")
-            
-            # If no drugs are suggested for this condition
+            suggested_drugs = full_context.get("suggested_drugs", [])
+
+            # Step 4: If the knowledge base has no drugs for this condition, return early.
             if not suggested_drugs:
-                logger.warning(f"No medications found for condition: {condition_name}")
-                return {
-                    "general_advice": general_advice,
-                    "medications": [],
-                    "condition": condition_name
-                }
-            
-            # Build medications list with proper structure
+                logger.warning(f"No medications found in knowledge base for: {condition_name}")
+                return {"general_advice": general_advice, "medications": [], "condition": condition_name}
+
+            # Step 5: Try to generate structured JSON using the enhanced RAG chain.
             medications = []
-            for drug_info in suggested_drugs:
-                drug_name = drug_info.get("name", "")
-                if drug_name:
-                    # Get default details for this medication
-                    med_details = self._get_default_medication_details(drug_name)
-                    
-                    medication = {
-                        "name": drug_name,
-                        "dosage": med_details["dosage"],
-                        "frequency": med_details["frequency"],
-                        "timing": med_details["timing"],
-                        "duration": med_details["duration"],
-                        "quantity": med_details["quantity"],
-                        "instructions": med_details["instructions"]
-                    }
-                    medications.append(medication)
-            
-            # Try to enhance with LLM if available
             try:
-                llm_response_str = self.rag_chain.invoke({"context": full_context, "question": transcription})
+                # The chain now directly outputs a parsed dictionary, not a raw string.
+                llm_response = self.rag_chain.invoke({
+                    "context": full_context,
+                    "question": transcription
+                })
                 
-                # Parse LLM response
-                start_idx = llm_response_str.find('[')
-                end_idx = llm_response_str.rfind(']')
-                if start_idx != -1 and end_idx != -1:
-                    llm_response_str = llm_response_str[start_idx:end_idx+1]
-                    llm_medications = json.loads(llm_response_str)
-                    
-                    # Use LLM response if it's valid
-                    if llm_medications and isinstance(llm_medications, list):
-                        medications = llm_medications
-                        logger.info("Using LLM-enhanced medication details")
+                if llm_response and 'medications' in llm_response:
+                    medications = llm_response['medications']
+                    logger.info(f"Successfully used LLM to generate {len(medications)} structured medication(s).")
+                else:
+                    # This helps catch cases where the LLM might return a malformed dict
+                    raise ValueError("LLM response did not contain the expected 'medications' key.")
+
             except Exception as llm_err:
-                logger.warning(f"LLM enhancement failed, using defaults: {llm_err}")
-                # Continue with default medications
-            
+                # Step 6: If the LLM fails, fall back to the rule-based method. This makes the system robust.
+                logger.warning(f"LLM enhancement failed: {llm_err}. Falling back to default medication details.")
+                for drug_info in suggested_drugs:
+                    drug_name = drug_info.get("name")
+                    if drug_name:
+                        med_details = self._get_default_medication_details(drug_name)
+                        medications.append({"name": drug_name, **med_details})
+
+            # Step 7: Construct and return the final, successful result.
             result = {
                 "general_advice": general_advice,
                 "medications": medications,
                 "condition": condition_name
             }
-            
-            logger.info(f"✅ Generated prescription with {len(medications)} medication(s)")
+            logger.info(f"✅ Generated prescription with {len(medications)} medication(s) for '{condition_name}'")
             return result
-            
+
         except Exception as e:
-            logger.error(f"❌ RAG chain failed: {e}")
-            return {"error": "Failed to generate prescription details."}
+            logger.error(f"❌ RAG pipeline failed unexpectedly: {e}", exc_info=True)
+            return {"error": "A critical error occurred during prescription generation."}

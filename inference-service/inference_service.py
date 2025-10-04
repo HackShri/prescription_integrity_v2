@@ -1,5 +1,4 @@
 import os
-import tempfile
 import torch
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +7,7 @@ import uvicorn
 import logging
 from pydub import AudioSegment
 import librosa
+import io
 # Import the new RAG system
 from rag_prescription_generator import RAGPrescriptionGenerator
 
@@ -46,30 +46,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ====== AUDIO HELPERS ======
-def convert_and_resample_audio(input_path: str, output_path: str, target_sr: int = 16000):
-    """Converts any audio format supported by ffmpeg to a mono 16kHz WAV file."""
-    try:
-        audio = AudioSegment.from_file(input_path)
-        audio = audio.set_channels(1).set_frame_rate(target_sr)
-        audio.export(output_path, format="wav")
-        logger.info(f"✅ Audio converted successfully to {output_path}")
-        return True
-    except Exception as e:
-        logger.error(f"❌ Audio conversion failed: {e}")
-        return False
-
-def load_audio_for_whisper(file_path: str, target_sr: int = 16000):
-    """Loads the converted WAV file for Whisper processing."""
-    try:
-        audio, sr = librosa.load(file_path, sr=target_sr, mono=True)
-        if len(audio) == 0:
-            raise ValueError("Audio file is empty after conversion.")
-        logger.info(f"✅ Audio loaded for Whisper: duration={len(audio)/sr:.2f}s")
-        return audio, sr
-    except Exception as e:
-        logger.error(f"❌ Audio loading failed: {e}")
-        raise
 
 # ====== API ENDPOINTS ======
 @app.get("/health")
@@ -82,6 +58,34 @@ async def health_check():
         "device": device
     }
 
+
+@app.post("/ask")
+async def ask_medical_question(payload: dict):
+    """Accepts JSON: {"question": "..."} and returns a short answer."""
+    try:
+        question = payload.get("question") if isinstance(payload, dict) else None
+        if not question:
+            raise ValueError("No question provided")
+
+        # Try to generate a prescription-style response to extract context, otherwise fallback
+        result = rag_generator.generate(question)
+
+        # If the RAG pipeline returned medications or advice, produce a concise summary
+        if isinstance(result, dict):
+            advice = result.get("general_advice")
+            medications = result.get("medications", [])
+            if medications:
+                meds_list = ", ".join([m.get("name", "unknown") for m in medications[:5]])
+                content = f"Based on the context: {advice or ''} Suggested medications: {meds_list}."
+            else:
+                content = advice or "I couldn't find specific treatment suggestions; please consult a clinician."
+
+            return {"content": content}
+
+        return {"content": "I couldn't process the question. Please try again with more details."}
+    except Exception as e:
+        return {"content": f"Error processing question: {e}"}
+
 @app.post("/generate-prescription")
 async def generate_prescription(
     audio: UploadFile = File(...),
@@ -92,25 +96,30 @@ async def generate_prescription(
     
     if not audio.filename:
         raise HTTPException(status_code=400, detail="No audio file provided")
-
-    suffix = os.path.splitext(audio.filename)[1].lower() or ".tmp"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        content = await audio.read()
-        tmp.write(content)
-        tmp_path = tmp.name
-    
-    transcription_text = ""
-    converted_path = None
     
     try:
-        # Step 1 & 2: Convert and load audio
-        converted_path = tmp_path.replace(suffix, '_converted.wav')
-        if not convert_and_resample_audio(tmp_path, converted_path):
-            raise HTTPException(status_code=400, detail="Failed to convert audio format.")
+        # Step 1: Read audio file into an in-memory buffer
+        content = await audio.read()
+        audio_file_like = io.BytesIO(content)
         
-        speech, sr = load_audio_for_whisper(converted_path)
+        # Step 2: Convert audio in-memory using pydub
+        logger.info("Converting audio in-memory...")
+        audio_segment = AudioSegment.from_file(audio_file_like)
+        audio_segment = audio_segment.set_channels(1).set_frame_rate(16000)
         
-        # Step 3: Transcribe audio with Whisper
+        # Export to an in-memory WAV file for librosa
+        wav_io = io.BytesIO()
+        audio_segment.export(wav_io, format="wav")
+        wav_io.seek(0) # Reset buffer position to the beginning
+
+        # Step 3: Load audio data from the in-memory WAV buffer using librosa
+        speech, sr = librosa.load(wav_io, sr=16000, mono=True)
+        if len(speech) == 0:
+            raise ValueError("Audio processing resulted in an empty file.")
+        
+        logger.info(f"✅ Audio processed in-memory: duration={len(speech)/sr:.2f}s")
+        
+        # Step 4: Transcribe audio with Whisper
         logger.info("Transcribing audio...")
         inputs = processor(speech, sampling_rate=sr, return_tensors="pt").input_features.to(device)
         forced_decoder_ids = processor.get_decoder_prompt_ids(language="english", task="transcribe")
@@ -125,17 +134,15 @@ async def generate_prescription(
 
         logger.info(f"✅ Transcription successful: '{transcription_text}'")
 
-        # Step 4: Generate prescription details with the RAG System
+        # Step 5: Generate prescription details with the RAG System
         rag_result = rag_generator.generate(transcription_text)
 
         if "error" in rag_result:
             raise HTTPException(status_code=500, detail=rag_result["error"])
 
-        # Step 5: Construct the final frontend-ready object
-        # Properly structure the medications array
+        # Step 6: Construct the final frontend-ready object
         medications = rag_result.get("medications", [])
         
-        # Ensure all medications have required fields
         formatted_medications = []
         for med in medications:
             formatted_med = {
@@ -163,14 +170,9 @@ async def generate_prescription(
         }
 
     except Exception as e:
-        logger.error(f"❌ An error occurred in the generation pipeline: {e}")
+        logger.error(f"❌ An error occurred in the generation pipeline: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"An internal error occurred: {str(e)}")
-    finally:
-        # Ensure temporary files are always cleaned up
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-        if converted_path and os.path.exists(converted_path):
-            os.remove(converted_path)
+    # The 'finally' block for file cleanup is no longer needed
 
 if __name__ == "__main__":
     uvicorn.run("inference_service:app", host="0.0.0.0", port=8001, reload=True)

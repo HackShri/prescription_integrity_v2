@@ -4,14 +4,14 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { AlertDescription } from '../ui/alert';
-import { 
-  Phone, 
-  User, 
-  Plus, 
-  Trash2, 
-  Edit, 
-  Save, 
-  X, 
+import {
+  Phone,
+  User,
+  Plus,
+  Trash2,
+  Edit,
+  Save,
+  X,
   AlertTriangle,
   CheckCircle,
   Heart
@@ -65,14 +65,14 @@ const EmergencyContact = () => {
       setError('Relationship is required');
       return false;
     }
-    
+
     // Basic phone validation
     const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
     if (!phoneRegex.test(formData.phone.replace(/[\s\-\(\)]/g, ''))) {
       setError('Please enter a valid phone number');
       return false;
     }
-    
+
     return true;
   };
 
@@ -85,8 +85,8 @@ const EmergencyContact = () => {
 
     if (editingId) {
       // Update existing contact
-      setContacts(prev => prev.map(contact => 
-        contact.id === editingId 
+      setContacts(prev => prev.map(contact =>
+        contact.id === editingId
           ? { ...formData, id: editingId }
           : contact.isPrimary && formData.isPrimary ? { ...contact, isPrimary: false } : contact
       ));
@@ -97,12 +97,12 @@ const EmergencyContact = () => {
         ...formData,
         id: Date.now().toString()
       };
-      
+
       // If this is set as primary, remove primary from others
       if (formData.isPrimary) {
         setContacts(prev => prev.map(contact => ({ ...contact, isPrimary: false })));
       }
-      
+
       setContacts(prev => [...prev, newContact]);
       setSuccess('Contact added successfully');
     }
@@ -121,10 +121,6 @@ const EmergencyContact = () => {
     setSuccess('Contact deleted successfully');
   };
 
-  const handleCall = (phone) => {
-    window.open(`tel:${phone}`, '_self');
-  };
-
   const resetForm = () => {
     setFormData({
       name: '',
@@ -138,6 +134,39 @@ const EmergencyContact = () => {
     setTimeout(() => setSuccess(''), 3000);
   };
 
+  // --- CORRECTED CallButton COMPONENT ---
+  // This component now correctly handles both mobile and desktop devices.
+  const CallButton = ({ phone, isPrimary = false }) => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // On mobile, use the 'tel:' link to open the native phone dialer.
+    if (isMobile) {
+      return (
+        <Button
+          onClick={() => window.open(`tel:${phone}`, '_self')}
+          className={isPrimary ? "bg-red-500 hover:bg-red-600 text-white" : "bg-green-500 hover:bg-green-600 text-white"}
+          size={isPrimary ? "lg" : "sm"}
+        >
+          <Phone className={isPrimary ? "w-5 h-5 mr-2" : "w-4 h-4"} />
+          {isPrimary && 'Call Now'}
+        </Button>
+      );
+    }
+
+    // On desktop, open a WhatsApp chat link in a new tab.
+    return (
+      <Button
+        onClick={() => window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}`, '_blank')}
+        title="Open WhatsApp Chat"
+        className={isPrimary ? "bg-red-500 hover:bg-red-600 text-white" : "bg-green-500 hover:bg-green-600 text-white"}
+        size={isPrimary ? "lg" : "sm"}
+      >
+        <Phone className={isPrimary ? "w-5 h-5 mr-2" : "w-4 h-4"} />
+        {isPrimary ? 'Chat on WhatsApp' : ''}
+      </Button>
+    );
+  };
+
   const primaryContact = contacts.find(contact => contact.isPrimary);
   const otherContacts = contacts.filter(contact => !contact.isPrimary);
 
@@ -147,9 +176,9 @@ const EmergencyContact = () => {
         <div className="absolute top-20 left-20 w-72 h-72 bg-red-500/5 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-20 right-20 w-72 h-72 bg-orange-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
-      
+
       <Header />
-      
+
       <main className="p-6 max-w-4xl mx-auto relative z-10">
         <div className="text-center mb-8 slide-in-top">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent mb-2">
@@ -195,16 +224,9 @@ const EmergencyContact = () => {
                   <p className="text-gray-500">{primaryContact.phone}</p>
                 </div>
                 <div className="flex space-x-2">
-                  <Button 
-                    onClick={() => handleCall(primaryContact.phone)}
-                    className="bg-red-500 hover:bg-red-600 text-white"
-                    size="lg"
-                  >
-                    <Phone className="w-5 h-5 mr-2" />
-                    Call Now
-                  </Button>
-                  <Button 
-                    variant="outline" 
+                  <CallButton phone={primaryContact.phone} isPrimary={true} />
+                  <Button
+                    variant="outline"
                     onClick={() => handleEdit(primaryContact)}
                     size="sm"
                   >
@@ -257,12 +279,12 @@ const EmergencyContact = () => {
                       type="tel"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      placeholder="+1234567890"
+                      placeholder="+911234567890"
                       required
                     />
                   </div>
                 </div>
-                
+
                 <div className="form-group">
                   <Label htmlFor="relationship">Relationship</Label>
                   <Input
@@ -318,22 +340,16 @@ const EmergencyContact = () => {
                         <p className="text-gray-500 text-sm">{contact.phone}</p>
                       </div>
                       <div className="flex space-x-1">
-                        <Button 
-                          onClick={() => handleCall(contact.phone)}
-                          size="sm"
-                          className="bg-green-500 hover:bg-green-600 text-white"
-                        >
-                          <Phone className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
+                        <CallButton phone={contact.phone} />
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleEdit(contact)}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleDelete(contact.id)}
                           className="text-red-500 hover:text-red-700"
@@ -352,7 +368,7 @@ const EmergencyContact = () => {
         {/* Add Contact Button */}
         {!isAdding && (
           <div className="text-center">
-            <Button 
+            <Button
               onClick={() => setIsAdding(true)}
               className="button-secondary h-12 text-lg"
             >
