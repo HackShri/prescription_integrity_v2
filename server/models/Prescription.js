@@ -3,10 +3,10 @@ const mongoose = require('mongoose');
 const medicationSchema = new mongoose.Schema({
   name: { type: String, required: true },
   dosage: { type: String, required: true }, // e.g., "500mg", "10ml"
-  quantity: { type: Number},//, required: true }, // number of tablets/bottles to buy
-  frequency: { type: String},//, required: true }, // e.g., "twice daily", "once daily"
-  timing: { type: String},//, required: true }, // e.g., "after meals", "before breakfast", "at bedtime"
-  duration: { type: String},//, required: true }, // e.g., "7 days", "2 weeks"
+  quantity: { type: Number },//, required: true }, // number of tablets/bottles to buy
+  frequency: { type: String },//, required: true }, // e.g., "twice daily", "once daily"
+  timing: { type: String },//, required: true }, // e.g., "after meals", "before breakfast", "at bedtime"
+  duration: { type: String },//, required: true }, // e.g., "7 days", "2 weeks"
   instructions: { type: String }, // additional specific instructions
 });
 
@@ -15,6 +15,7 @@ const prescriptionSchema = new mongoose.Schema({
   patientMobile: { type: String }, // New field for mobile number
   patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  shortId: { type: String, unique: true, index: true },
   instructions: { type: String },
   medications: [medicationSchema], // Updated to use detailed medication schema
   age: { type: Number },
@@ -23,7 +24,7 @@ const prescriptionSchema = new mongoose.Schema({
   usageLimit: { type: Number, default: 1 },
   used: { type: Number, default: 0 },
   dispensedBy: [{
-    pharmacistId:{
+    pharmacistId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true
@@ -47,5 +48,6 @@ const prescriptionSchema = new mongoose.Schema({
   clinicName: { type: String, default: '' },
   clinicAddress: { type: String, default: '' }
 }, { timestamps: true });
+
 
 module.exports = mongoose.model('Prescription', prescriptionSchema);

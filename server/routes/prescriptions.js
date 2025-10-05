@@ -28,16 +28,16 @@ router.post('/offline', authMiddleware, async (req, res) => {
     isOfflinePrescription,
     originalPrescriptionText
   } = req.body;
-  
+
   try {
     let patient;
     if (patientEmail) patient = await User.findOne({ email: patientEmail, role: 'patient' });
     if (!patient && patientMobile) patient = await User.findOne({ mobile: patientMobile, role: 'patient' });
-    
+
     if (!patient) {
       return res.status(400).json({ message: 'Patient not found.' });
     }
-    
+
     const doctorId = req.user.userId;
     const prescription = new Prescription({
       patientId: patient._id, doctorId, patientEmail: patient.email, patientMobile: patient.mobile,
@@ -48,6 +48,8 @@ router.post('/offline', authMiddleware, async (req, res) => {
       clinicName: clinicName || '', clinicAddress: clinicAddress || ''
     });
     await prescription.save();
+
+
 
     const notification = {
       user: patient._id,
@@ -74,9 +76,9 @@ router.post('/', authMiddleware, roleMiddleware('doctor'), async (req, res) => {
     let patient;
     if (patientEmail) patient = await User.findOne({ email: patientEmail, role: 'patient' });
     if (!patient && patientMobile) patient = await User.findOne({ mobile: patientMobile, role: 'patient' });
-    
+
     if (!patient) return res.status(400).json({ message: 'Patient not found.' });
-    
+
     const prescription = new Prescription({
       patientId: patient._id, doctorId: req.user.userId, patientEmail: patient.email, patientMobile: patient.mobile,
       instructions, medications, age, weight, height, usageLimit, expiresAt, doctorSignature, patientPhoto: patient.photo || '',
@@ -84,10 +86,10 @@ router.post('/', authMiddleware, roleMiddleware('doctor'), async (req, res) => {
     await prescription.save();
 
     const notification = {
-        user: patient._id,
-        type: 'prescription',
-        message: 'A new prescription has been issued to you.',
-        meta: { prescriptionId: prescription._id }
+      user: patient._id,
+      type: 'prescription',
+      message: 'A new prescription has been issued to you.',
+      meta: { prescriptionId: prescription._id }
     };
     await Notification.create(notification);
 
@@ -114,12 +116,12 @@ router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const prescription = await Prescription.findById(req.params.id);
     if (!prescription) return res.status(404).json({ message: 'Prescription not found' });
-    
+
     const isPatient = String(req.user.userId) === String(prescription.patientId);
     const isPharmacist = req.user.role === 'pharmacist';
-    
+
     if (!isPatient && !isPharmacist) return res.status(403).json({ message: 'Access denied' });
-    
+
     res.json(prescription);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -131,9 +133,9 @@ router.get('/short/:shortId', authMiddleware, roleMiddleware('pharmacist'), asyn
     const { shortId } = req.params;
     const prescriptions = await Prescription.find().populate('patientId', 'name');
     const prescription = prescriptions.find(p => p._id.toString().slice(-8) === shortId);
-    
+
     if (!prescription) return res.status(404).json({ message: 'Prescription not found' });
-    
+
     res.json(prescription);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -177,15 +179,15 @@ router.patch('/:id/use', authMiddleware, roleMiddleware('pharmacist'), async (re
 
 // PDF download route
 router.get('/:id/download', authMiddleware, async (req, res) => {
-    // This route's logic seems fine, no changes needed here.
-    try {
-        const prescription = await Prescription.findById(req.params.id);
-        if (!prescription) return res.status(404).send('Not Found');
-        // ... (rest of the PDF generation logic)
-        res.send("PDF generation logic goes here."); // Placeholder
-    } catch (err) {
-        res.status(500).send("Server Error");
-    }
+  // This route's logic seems fine, no changes needed here.
+  try {
+    const prescription = await Prescription.findById(req.params.id);
+    if (!prescription) return res.status(404).send('Not Found');
+    // ... (rest of the PDF generation logic)
+    res.send("PDF generation logic goes here."); // Placeholder
+  } catch (err) {
+    res.status(500).send("Server Error");
+  }
 });
 
 module.exports = router;
