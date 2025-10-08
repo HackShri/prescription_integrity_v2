@@ -18,7 +18,7 @@ router.post("/generate-prescription", upload.single("audio"), async (req, res) =
     const filePath = req.file.path;
     const age = parseInt(req.body.age) || 30;
     const weight = parseFloat(req.body.weight) || 70.0;
-    
+
     const formData = new FormData();
     formData.append('audio', fs.createReadStream(filePath), {
       filename: req.file.originalname || 'audio.webm',
@@ -43,11 +43,11 @@ router.post("/generate-prescription", upload.single("audio"), async (req, res) =
     res.json(response.data);
   } catch (err) {
     console.error("Prescription generation error:", err.message);
-    
+
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    
+
     if (err.response) {
       const status = err.response.status || 500;
       const data = err.response.data || {};
@@ -62,50 +62,50 @@ router.post("/generate-prescription", upload.single("audio"), async (req, res) =
 });
 
 // Backwards-compatible handler for legacy client calls
-router.post('/smart-transcribe', upload.single('audio'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No audio file provided' });
-    }
+// router.post('/smart-transcribe', upload.single('audio'), async (req, res) => {
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({ error: 'No audio file provided' });
+//     }
 
-    const filePath = req.file.path;
-    const age = parseInt(req.body.age) || 30;
-    const weight = parseFloat(req.body.weight) || 70.0;
+//     const filePath = req.file.path;
+//     const age = parseInt(req.body.age) || 30;
+//     const weight = parseFloat(req.body.weight) || 70.0;
 
-    const formData = new FormData();
-    formData.append('audio', fs.createReadStream(filePath), {
-      filename: req.file.originalname || 'audio.webm',
-      contentType: req.file.mimetype || 'audio/webm'
-    });
-    formData.append('age', age.toString());
-    formData.append('weight', weight.toString());
+//     const formData = new FormData();
+//     formData.append('audio', fs.createReadStream(filePath), {
+//       filename: req.file.originalname || 'audio.webm',
+//       contentType: req.file.mimetype || 'audio/webm'
+//     });
+//     formData.append('age', age.toString());
+//     formData.append('weight', weight.toString());
 
-    const response = await axios.post(
-      'http://localhost:8001/generate-prescription',
-      formData,
-      { headers: { ...formData.getHeaders() }, timeout: 60000 }
-    );
+//     const response = await axios.post(
+//       'http://localhost:8001/generate-prescription',
+//       formData,
+//       { headers: { ...formData.getHeaders() }, timeout: 60000 }
+//     );
 
-    fs.unlinkSync(filePath);
+//     fs.unlinkSync(filePath);
 
-    return res.json(response.data);
-  } catch (err) {
-    console.error('Smart transcribe proxy error:', err.message);
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    if (err.response) {
-      const status = err.response.status || 500;
-      const data = err.response.data || {};
-      const detail = data.detail || data.error || data.message || 'AI service error';
-      return res.status(status).json({ error: detail, raw: data });
-    }
-    if (err.code === 'ECONNREFUSED') {
-      return res.status(503).json({ error: 'AI service is unavailable.' });
-    }
-    return res.status(500).json({ error: 'Failed to process audio.' });
-  }
-});
+//     return res.json(response.data);
+//   } catch (err) {
+//     console.error('Smart transcribe proxy error:', err.message);
+//     if (req.file && fs.existsSync(req.file.path)) {
+//       fs.unlinkSync(req.file.path);
+//     }
+//     if (err.response) {
+//       const status = err.response.status || 500;
+//       const data = err.response.data || {};
+//       const detail = data.detail || data.error || data.message || 'AI service error';
+//       return res.status(status).json({ error: detail, raw: data });
+//     }
+//     if (err.code === 'ECONNREFUSED') {
+//       return res.status(503).json({ error: 'AI service is unavailable.' });
+//     }
+//     return res.status(500).json({ error: 'Failed to process audio.' });
+//   }
+// });
 
 // Simple transcription passthrough if needed by client (without LLM)
 router.post('/transcribe', upload.single('audio'), async (req, res) => {

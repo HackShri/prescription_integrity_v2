@@ -48,6 +48,12 @@ const prescriptionSchema = new mongoose.Schema({
   clinicName: { type: String, default: '' },
   clinicAddress: { type: String, default: '' }
 }, { timestamps: true });
+prescriptionSchema.pre('save', function (next) {
+  if (this.isNew && !this.shortId) {
+    this.shortId = this._id.toString().slice(-8);
+  }
+  next();
+});
 
 
 module.exports = mongoose.model('Prescription', prescriptionSchema);

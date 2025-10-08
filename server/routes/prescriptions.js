@@ -131,12 +131,10 @@ router.get('/:id', authMiddleware, async (req, res) => {
 router.get('/short/:shortId', authMiddleware, roleMiddleware('pharmacist'), async (req, res) => {
   try {
     const { shortId } = req.params;
-    const prescriptions = await Prescription.find().populate('patientId', 'name');
-    const prescription = prescriptions.find(p => p._id.toString().slice(-8) === shortId);
-
-    if (!prescription) return res.status(404).json({ message: 'Prescription not found' });
-
-    res.json(prescription);
+    const prescription = await Prescription.findOne({ shortId }).populate('pharmacist'), async (req, res) => {
+      if (!prescription) return res.status(404).json({ message: 'Prescription Not found' });
+      res.json(prescription);
+    }
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
