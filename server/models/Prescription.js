@@ -47,6 +47,16 @@ const prescriptionSchema = new mongoose.Schema({
   doctorMobile: { type: String, default: '' },
   clinicName: { type: String, default: '' },
   clinicAddress: { type: String, default: '' }
+  ,
+  // Verification metadata for pharmacist/doctor cross-check workflow
+  verification: {
+    status: { type: String, enum: ['none', 'pending', 'verified', 'rejected'], default: 'none' },
+    flaggedMedications: [{ name: String, reason: String }],
+    requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    verifiedAt: { type: Date },
+    notes: { type: String, default: '' }
+  }
 }, { timestamps: true });
 prescriptionSchema.pre('save', function (next) {
   if (this.isNew && !this.shortId) {
