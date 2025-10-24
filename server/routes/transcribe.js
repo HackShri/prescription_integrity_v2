@@ -3,8 +3,6 @@ const axios = require("axios");
 const multer = require("multer");
 const fs = require("fs");
 const FormData = require("form-data");
-const crypto = require('crypto');
-const redis = require('../utils/cache');
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" }); // Using temporary storage
@@ -120,38 +118,6 @@ router.post('/smart-transcribe', upload.single('audio'), async (req, res) => {
     const age = parseInt(req.body.age) || 30;
     const weight = parseFloat(req.body.weight) || 70.0;
 
-    // Compute a stable hash for the audio file combined with params
-    let cacheKey;
-    try {
-      const audioBuffer = fs.readFileSync(filePath);
-      const h = crypto.createHash('sha256');
-      h.update(audioBuffer);
-      h.update('\n');
-      h.update(String(age));
-      h.update('\n');
-      h.update(String(weight));
-      cacheKey = `smarttranscribe:${h.digest('hex')}`;
-
-      // Check Redis for a cached response
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          // return cached JSON response
-          const parsed = JSON.parse(cached);
-          // cleanup file before returning
-          try { fs.unlinkSync(filePath); } catch (e) { /* ignore */ }
-          return res.json(parsed);
-        }
-      } catch (redisErr) {
-        // Non-fatal: log and continue to call AI service
-        console.error('Redis get error (smart-transcribe):', redisErr && redisErr.message ? redisErr.message : redisErr);
-      }
-    } catch (hashErr) {
-      // If hashing fails, continue without caching
-      console.error('Failed to compute audio hash for caching:', hashErr && hashErr.message ? hashErr.message : hashErr);
-      cacheKey = null;
-    }
-
     const formData = new FormData();
     formData.append('audio', fs.createReadStream(filePath), {
       filename: req.file.originalname || 'audio.webm',
@@ -165,16 +131,6 @@ router.post('/smart-transcribe', upload.single('audio'), async (req, res) => {
       formData,
       { headers: { ...formData.getHeaders() }, timeout: 60000 }
     );
-
-    // Persist result to Redis if we have a cache key
-    if (cacheKey) {
-      try {
-        // store for 1 hour (3600 seconds)
-        await redis.setex(cacheKey, 3600, JSON.stringify(response.data));
-      } catch (redisErr) {
-        console.error('Redis set error (smart-transcribe):', redisErr && redisErr.message ? redisErr.message : redisErr);
-      }
-    }
 
     fs.unlinkSync(filePath);
 
