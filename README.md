@@ -20,6 +20,101 @@ This project uses OCR for text extraction, LLMs for prescription understanding, 
 
 ---
 
+## 📁 Project Structure
+
+```
+prescription-integrity/
+├── client/                          # React frontend application
+│   ├── src/
+│   │   ├── api/                     # API client and services
+│   │   │   ├── apiClient.js
+│   │   │   ├── authService.js
+│   │   │   └── prescriptionService.js
+│   │   ├── components/              # React components
+│   │   │   ├── layout/
+│   │   │   │   └── Header.jsx
+│   │   │   ├── shared/              # Shared components
+│   │   │   │   ├── Chatbot.jsx
+│   │   │   │   ├── emergencyContact.jsx
+│   │   │   │   ├── MedicationForm.jsx
+│   │   │   │   ├── NotificationBell.jsx
+│   │   │   │   ├── OCRScanner.jsx
+│   │   │   │   ├── PatientSearch.jsx
+│   │   │   │   └── PillTimeline.jsx
+│   │   │   └── ui/                  # UI components
+│   │   │       ├── alert.jsx
+│   │   │       ├── button.jsx
+│   │   │       ├── card.jsx
+│   │   │       ├── dropdown-menu.jsx
+│   │   │       ├── input.jsx
+│   │   │       ├── label.jsx
+│   │   │       ├── sheet.jsx
+│   │   │       └── utils.js
+│   │   ├── context/                 # React context providers
+│   │   │   └── AuthContext.jsx
+│   │   ├── hooks/                   # Custom React hooks
+│   │   │   └── useSpeechRecognition.jsx
+│   │   ├── pages/                   # Page components
+│   │   │   ├── dashboards/
+│   │   │   │   ├── AdminDashboard.jsx
+│   │   │   │   ├── DoctorDashboard.jsx
+│   │   │   │   ├── PatientDashboard.jsx
+│   │   │   │   └── ShopDashboard.jsx
+│   │   │   ├── ChatPage.jsx
+│   │   │   ├── Home.jsx
+│   │   │   ├── Login.jsx
+│   │   │   ├── MyAccount.jsx
+│   │   │   ├── Scanner.jsx
+│   │   │   └── Signup.jsx
+│   │   ├── utils/                   # Utility functions
+│   │   │   └── patientUtils.jsx
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── public/
+│   ├── package.json
+│   └── vite.config.js
+├── server/                          # Node.js backend server
+│   ├── config/
+│   │   └── db.js                    # Database configuration
+│   ├── middleware/
+│   │   ├── authMiddleware.js        # JWT authentication middleware
+│   │   └── roleMiddleware.js        # Role-based access control
+│   ├── models/                      # MongoDB models
+│   │   ├── Notification.js
+│   │   ├── PillSchedule.js
+│   │   ├── Prescription.js
+│   │   └── User.js
+│   ├── routes/                      # API routes
+│   │   ├── auth.js                  # Authentication routes
+│   │   ├── chatbot.js               # Chatbot API
+│   │   ├── pillSchedule.js         # Pill schedule management
+│   │   ├── prescriptions.js        # Prescription management
+│   │   ├── transcribe.js            # Audio transcription
+│   │   └── users.js                 # User management
+│   ├── utils/
+│   │   └── cache.js                 # Caching utilities (removed Redis)
+│   ├── uploads/                     # File upload directory
+│   ├── server.js                    # Main server file
+│   └── package.json
+├── inference-service/               # Python AI inference service
+│   ├── venv/                        # Python virtual environment
+│   ├── __pycache__/
+│   ├── create_knowledge_base.py     # Knowledge base creation
+│   ├── inference_service.py         # Main inference service
+│   ├── medical_data.json            # Medical knowledge data
+│   ├── medical_llm.py               # Medical LLM integration
+│   ├── rag_prescription_generator.py # RAG-based prescription generation
+│   ├── start_service.py             # Service startup script
+│   ├── requirements.txt             # Python dependencies
+│   └── README.md
+├── FIXES_SUMMARY.md                 # Summary of fixes and improvements
+├── LLM.txt                          # LLM configuration and notes
+└── README.md                        # Project documentation
+```
+
+---
+
 ## 🧰 Installation
 
 ### Clone the repository
