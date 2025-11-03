@@ -76,10 +76,24 @@ router.post('/signup', async (req, res) => {
       }
     }
 
+    // Create JWT token with 24-hour expiration
     const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '1d',
+      expiresIn: '24h', // 24 hours
     });
-    res.status(201).json({ token });
+    
+    // Create session with 24-hour expiration
+    req.session.userId = user._id.toString();
+    req.session.userRole = user.role;
+    req.session.isAuthenticated = true;
+    
+    res.status(201).json({ 
+      token,
+      message: 'User registered successfully',
+      session: {
+        authenticated: true,
+        expiresIn: '24h'
+      }
+    });
   } catch (err) {
     if (err.message === 'Either email or mobile number is required') {
       return res.status(400).json({ message: err.message });
@@ -112,10 +126,24 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ message: 'Account not verified' });
     }
 
+    // Create JWT token with 24-hour expiration
     const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '1d',
+      expiresIn: '24h', // 24 hours
     });
-    res.json({ token });
+    
+    // Create session with 24-hour expiration
+    req.session.userId = user._id.toString();
+    req.session.userRole = user.role;
+    req.session.isAuthenticated = true;
+    
+    res.json({ 
+      token,
+      message: 'Login successful',
+      session: {
+        authenticated: true,
+        expiresIn: '24h'
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -144,13 +172,32 @@ router.post('/upload-photo', authMiddleware, upload.single('photo'), async (req,
   }
 });
 
+// Logout endpoint - destroys session
+router.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error logging out', error: err.message });
+    }
+    res.clearCookie('sessionId');
+    res.json({ message: 'Logout successful' });
+  });
+});
+
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json(user);
+    
+    // Check if session is still valid
+    const sessionInfo = req.session.isAuthenticated ? {
+      authenticated: true,
+      expiresIn: '24h',
+      sessionId: req.sessionID
+    } : null;
+    
+    res.json({ ...user.toObject(), session: sessionInfo });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
