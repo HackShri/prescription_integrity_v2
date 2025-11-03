@@ -172,39 +172,47 @@ const OCRScanner = () => {
     setError('');
 
     try {
-      // Import Tesseract.js dynamically
-      const { createWorker } = await import('tesseract.js');
+      // Convert base64 image to blob for upload
+      let imageBlob;
+      if (image.startsWith('data:')) {
+        // Base64 data URL - convert to blob
+        const response = await fetch(image);
+        imageBlob = await response.blob();
+      } else {
+        // Already a blob
+        imageBlob = image;
+      }
 
-      const worker = await createWorker('eng');
-      
-      // Optimized parameters for prescription reading
-      await worker.setParameters({
-        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,;:()[]{}@#$%&*+-=/\\|<>?!"\'`~ ',
-        tessedit_pageseg_mode: '6', // Uniform block of text
-        preserve_interword_spaces: '1',
-        tessedit_ocr_engine_mode: '1', // LSTM OCR Engine Mode
-        tessedit_char_blacklist: '|', // Remove pipe characters that often cause issues
+      // Create FormData for the API request
+      const formData = new FormData();
+      formData.append('image', imageBlob, 'prescription.jpg');
+
+      // Call the DeepSeek-OCR endpoint on the inference service
+      const response = await fetch('http://localhost:8001/ocr-extract', {
+        method: 'POST',
+        body: formData,
       });
 
-      const { data: { text, confidence } } = await worker.recognize(image);
-      await worker.terminate();
-
-      if (confidence < 25) {
-        setError('Text recognition confidence is very low. Please try with a clearer image or better lighting.');
-        return;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
-      
-      if (confidence < 50) {
-        setSuccess('Text extracted with moderate confidence. Please review the extracted information carefully.');
+
+      const result = await response.json();
+      const text = result.text || result.extractedText || '';
+
+      if (!text || text.trim().length === 0) {
+        setError('No text detected in the image. Please try with a clearer image.');
+        return;
       }
 
       setExtractedText(text);
-      setSuccess('Text extracted successfully! Review and edit the extracted information.');
+      setSuccess('Text extracted successfully using DeepSeek-OCR! Review and edit the extracted information.');
       parsePrescriptionText(text);
 
     } catch (err) {
       console.error('OCR Error:', err);
-      setError('Failed to extract text from image. Please try again with a clearer image.');
+      setError(`Failed to extract text from image: ${err.message}. Please ensure the inference service is running on port 8001.`);
     } finally {
       setIsProcessing(false);
     }
