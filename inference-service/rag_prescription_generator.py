@@ -7,7 +7,6 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.vectorstores.utils import filter_complex_metadata
 from langchain.docstore.document import Document
 from langchain.prompts import PromptTemplate
-from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_ollama import OllamaLLM as Ollama
@@ -64,21 +63,76 @@ class RAGPrescriptionGenerator:
         self.parser = JsonOutputParser(pydantic_object=PrescriptionOutput)
         self.prompt_template = self._get_prompt_template()
         
+        # Create a helper function to format context from the knowledge base
+        def format_context(context_dict: Dict) -> str:
+            """Format the knowledge base context dict into a readable string for the LLM."""
+            if not context_dict:
+                return "No context available."
+            
+            condition_name = context_dict.get("condition_name", "Unknown condition")
+            symptoms = context_dict.get("symptoms", [])
+            general_advice = context_dict.get("general_advice", "Follow medication instructions carefully.")
+            suggested_drugs = context_dict.get("suggested_drugs", [])
+            
+            formatted = f"Condition: {condition_name}\n"
+            formatted += f"Symptoms: {', '.join(symptoms) if symptoms else 'Not specified'}\n"
+            formatted += f"General Advice: {general_advice}\n"
+            formatted += f"Suggested Drugs: {', '.join([drug.get('name', 'Unknown') for drug in suggested_drugs]) if suggested_drugs else 'None'}\n"
+            
+            if suggested_drugs:
+                formatted += "\nDetailed Drug Information:\n"
+                for drug in suggested_drugs:
+                    drug_name = drug.get('name', 'Unknown')
+                    formatted += f"- {drug_name}\n"
+            
+            return formatted
+        
+        self._format_context = format_context
+        
+        # The RAG chain now properly formats context before passing to prompt
         self.rag_chain = (
-            RunnablePassthrough.assign(context=(lambda x: x["context"]))
+            RunnablePassthrough.assign(context=lambda x: format_context(x.get("context", {})))
             | self.prompt_template
             | self.llm
             | self.parser
         )
-        logger.info("✅ RAG Generator initialized successfully with JSON parser.")
+        logger.info(f"✅ RAG Generator initialized successfully with JSON parser. Loaded {len(self._raw_kb)} conditions from knowledge base.")
 
-    def _load_data(self, data_path: str):
+    def _load_data(self, data_path: str) -> List[Dict]:
+        """Load and validate the JSON knowledge base file."""
         logger.info(f"Loading knowledge base from {data_path}...")
         try:
             with open(data_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                data = json.load(f)
+            
+            # Validate that data is a list
+            if not isinstance(data, list):
+                raise ValueError(f"Knowledge base file must contain a JSON array. Got: {type(data)}")
+            
+            # Validate that each item has required fields
+            valid_items = []
+            for idx, item in enumerate(data):
+                if not isinstance(item, dict):
+                    logger.warning(f"Skipping invalid item at index {idx}: expected dict, got {type(item)}")
+                    continue
+                if not item.get("condition_name"):
+                    logger.warning(f"Skipping item at index {idx}: missing 'condition_name'")
+                    continue
+                valid_items.append(item)
+            
+            logger.info(f"✅ Loaded {len(valid_items)} valid conditions from JSON knowledge base")
+            if len(valid_items) < len(data):
+                logger.warning(f"⚠️  Filtered out {len(data) - len(valid_items)} invalid items")
+            
+            return valid_items
+        except FileNotFoundError:
+            logger.error(f"❌ Knowledge base file not found: {data_path}")
+            raise
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ Failed to parse JSON in {data_path}: {e}")
+            raise
         except Exception as e:
-            logger.error(f"❌ Failed to load or parse {data_path}: {e}")
+            logger.error(f"❌ Failed to load knowledge base from {data_path}: {e}")
             raise
 
     def _normalize(self, s: str) -> str:
@@ -97,32 +151,63 @@ class RAGPrescriptionGenerator:
         return None
 
     def _create_vector_store_from_items(self, items: List[Dict]):
+        """Create vector store from JSON knowledge base items."""
         documents = []
         for item in items:
-            search_content = f"Condition: {item['condition_name']}. Symptoms: {', '.join(item.get('symptoms', []))}."
-            simple_metadata = {"condition_name": item.get("condition_name", "")}
+            condition_name = item.get('condition_name', 'Unknown')
+            symptoms = item.get('symptoms', [])
+            suggested_drugs = item.get('suggested_drugs', [])
+            
+            # Create more comprehensive search content that includes drugs
+            drug_names = [drug.get('name', '') for drug in suggested_drugs if drug.get('name')]
+            search_content = f"Condition: {condition_name}. "
+            search_content += f"Symptoms: {', '.join(symptoms) if symptoms else 'Not specified'}. "
+            if drug_names:
+                search_content += f"Suggested medications: {', '.join(drug_names)}."
+            
+            simple_metadata = {"condition_name": condition_name}
             documents.append(Document(page_content=search_content, metadata=simple_metadata))
+        
         filtered_documents = filter_complex_metadata(documents)
-        logger.info(f"Creating vector store with {len(filtered_documents)} documents...")
+        logger.info(f"Creating vector store with {len(filtered_documents)} documents from JSON knowledge base...")
         return Chroma.from_documents(documents=filtered_documents, embedding=self.embeddings)
 
     def _get_prompt_template(self) -> PromptTemplate:
-        # This new prompt works with the JsonOutputParser
-        template = """
-        You are a precise medical data structuring tool. Based on the provided CONTEXT, generate a JSON object for the user's prescription request.
-        The CONTEXT contains suggested drugs. Create a JSON object with a single key "medications" which contains a list of medication objects.
-        For EACH drug in the CONTEXT's `suggested_drugs` list, create a full medication object.
-        Infer logical, standard details for dosage, frequency, timing, etc., based on the drug name.
-        Calculate the 'quantity' field correctly based on the frequency and duration.
+        """Create prompt template that works with JSON knowledge base context."""
+        template = """You are a precise medical data structuring tool. Based on the provided CONTEXT from the medical knowledge base, generate a JSON object for the user's prescription request.
 
-        CONTEXT:
-        {context}
+The CONTEXT contains information from the medical knowledge base including:
+- Condition name
+- Symptoms
+- General advice
+- Suggested drugs
 
-        USER'S DESCRIPTION:
-        "{question}"
+Your task:
+1. Extract ALL suggested drugs from the CONTEXT
+2. For EACH suggested drug, create a complete medication object with:
+   - name: The exact drug name from the context
+   - dosage: A standard, appropriate dosage (e.g., "500mg", "10ml", "1 tablet")
+   - frequency: How often to take (e.g., "once daily", "twice daily", "every 6 hours")
+   - timing: When to take (e.g., "after meals", "before bed", "with food")
+   - duration: Treatment duration (e.g., "7 days", "5 days", "as needed")
+   - quantity: Calculate total units needed based on frequency and duration
+   - instructions: Important medication-specific instructions
 
-        {format_instructions}
-        """
+IMPORTANT:
+- Use medical knowledge to infer appropriate dosages and frequencies for each drug
+- Calculate quantity correctly: (frequency per day) × (duration in days)
+- Be specific and medically appropriate
+- Include safety instructions when relevant
+
+CONTEXT FROM KNOWLEDGE BASE:
+{context}
+
+USER'S DESCRIPTION/TRANSCRIPTION:
+"{question}"
+
+OUTPUT FORMAT INSTRUCTIONS:
+{format_instructions}
+"""
         return PromptTemplate(
             template=template,
             input_variables=["context", "question"],
@@ -183,12 +268,16 @@ class RAGPrescriptionGenerator:
                 logger.warning(f"No medications found in knowledge base for: {condition_name}")
                 return {"general_advice": general_advice, "medications": [], "condition": condition_name}
 
-            # Step 5: Try to generate structured JSON using the enhanced RAG chain.
+            # Step 5: Format the full context from JSON knowledge base and use it in RAG chain.
             medications = []
             try:
+                # Format the full_context dict into a readable string for the LLM
+                formatted_context = self._format_context(full_context)
+                logger.info(f"Using formatted context for condition: {condition_name}")
+                
                 # The chain now directly outputs a parsed dictionary, not a raw string.
                 llm_response = self.rag_chain.invoke({
-                    "context": full_context,
+                    "context": full_context,  # Pass dict, chain will format it
                     "question": transcription
                 })
                 

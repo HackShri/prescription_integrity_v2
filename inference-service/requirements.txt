@@ -9,3 +9,5 @@ pydub
 ffmpeg-python
 spacy
 requests
+Pillow
+accelerate
