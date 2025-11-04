@@ -25,3 +25,17 @@ export const markNotificationAsRead = (notificationId) => {
 export const markAllNotificationsAsRead = () => {
     return apiClient.patch('/auth/notifications/read-all', {});
 };
+
+// Upload patient photo (multipart/form-data), stored locally on server
+export const uploadPatientPhoto = (file) => {
+  const form = new FormData();
+  form.append('photo', file);
+  return apiClient.post('/auth/upload-photo', form, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
+
+// Submit first-time survey
+export const submitPatientSurvey = (survey) => {
+  return apiClient.post('/auth/survey', survey);
+};

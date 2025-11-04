@@ -18,6 +18,9 @@ const PillTimeline = () => {
   const [notification, setNotification] = useState('');
   const modalRef = useRef(null);
 
+  socket.on('connect', () => console.log(' socket connected:', socket.id));
+  socket.on('disconnect', () => console.warn('socket disconnected'));
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -39,6 +42,8 @@ const PillTimeline = () => {
     socket.emit('joinRoom', user.userId);
     socket.on('pillNotification', (data) => {
       setNotification(data.message);
+      const audio = new Audio('/sounds/alarm.wav');
+      audio.play().catch(() => console.warn('Autoplay blocked'));
       setTimeout(() => setNotification(''), 5000);
     });
 

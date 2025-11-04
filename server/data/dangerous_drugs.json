@@ -1,0 +1,10 @@
+{
+  "drugs": [
+    { "name": "Thalidomide", "reason": "Teratogenic risk; strict controls required" },
+    { "name": "Isotretinoin", "reason": "Severe teratogenicity; requires iPLEDGE-like verification" },
+    { "name": "Clozapine", "reason": "Agranulocytosis risk; requires ANC monitoring" },
+    { "name": "Warfarin", "reason": "High bleeding risk; careful INR monitoring required" },
+    { "name": "Lithium", "reason": "Narrow therapeutic index; requires serum monitoring" }
+  ]
+}
+

@@ -6,8 +6,30 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const authMiddleware = require('../middleware/authMiddleware');
+const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
+
+// Ensure upload directory exists
+const avatarDir = path.join(__dirname, '..', 'uploads', 'avatars');
+if (!fs.existsSync(avatarDir)) {
+  fs.mkdirSync(avatarDir, { recursive: true });
+}
+
+// Store photos on disk locally
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, avatarDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname || '') || '.jpg';
+    cb(null, `${req.user?.userId || 'anonymous'}_${Date.now()}${ext}`);
+  }
+});
+const upload = multer({ storage });
+
+// Use a safe JWT secret fallback if JWT_SECRET is not set
+const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key-change-in-production';
 
 router.post('/signup', async (req, res) => {
   const { name, email, mobile, password, role, secretCode, age, weight, height } = req.body;
@@ -37,10 +59,9 @@ router.post('/signup', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({
+    // Build user object without inserting null for sparse unique fields
+    const userData = {
       name,
-      email: email || null,
-      mobile: mobile || null,
       password: hashedPassword,
       role,
       age,
@@ -48,7 +69,11 @@ router.post('/signup', async (req, res) => {
       height,
       photo: '',
       verified: role === 'patient' || role === 'admin',
-    });
+    };
+    if (email) userData.email = email;
+    if (mobile) userData.mobile = mobile;
+
+    const user = new User(userData);
 
     await user.save();
 
@@ -77,7 +102,7 @@ router.post('/signup', async (req, res) => {
     }
 
     // Create JWT token with 24-hour expiration
-    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ userId: user._id, role: user.role }, jwtSecret, {
       expiresIn: '24h', // 24 hours
     });
     
@@ -98,7 +123,8 @@ router.post('/signup', async (req, res) => {
     if (err.message === 'Either email or mobile number is required') {
       return res.status(400).json({ message: err.message });
     }
-    res.status(500).json({ message: 'Server error' });
+    console.error('Signup error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
@@ -127,7 +153,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Create JWT token with 24-hour expiration
-    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ userId: user._id, role: user.role }, jwtSecret, {
       expiresIn: '24h', // 24 hours
     });
     
@@ -151,9 +177,7 @@ router.post('/login', async (req, res) => {
 
 router.post('/upload-photo', authMiddleware, upload.single('photo'), async (req, res) => {
   try {
-    const { email } = req.body;
-
-    const user = await User.findOne({ email });
+    const user = await User.findById(req.user.userId);
     if (!user || user.role !== 'patient') {
       return res.status(404).json({ message: 'Patient not found' });
     }
@@ -162,11 +186,65 @@ router.post('/upload-photo', authMiddleware, upload.single('photo'), async (req,
       return res.status(400).json({ message: 'No photo uploaded' });
     }
 
-    const photoBase64 = req.file.buffer.toString('base64');
-    user.photo = `data:${req.file.mimetype};base64,${photoBase64}`;
+    // Save relative path that frontend can request via static hosting
+    const relativePath = path.join('uploads', 'avatars', path.basename(req.file.path));
+    user.photo = relativePath.replace(/\\/g, '/');
     await user.save();
 
     res.json({ message: 'Photo uploaded successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Save first-time survey (medical profile) for patient
+router.post('/survey', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || user.role !== 'patient') {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    const {
+      bloodGroup,
+      diabetes,
+      hypertension,
+      asthma,
+      allergies,
+      chronicConditions,
+      currentMedications,
+      priorSurgeries,
+      smoking,
+      alcohol,
+      emergencyContact,
+      age,
+      weight,
+      height
+    } = req.body || {};
+
+    // Update basic vitals if provided
+    if (typeof age !== 'undefined') user.age = age;
+    if (typeof weight !== 'undefined') user.weight = weight;
+    if (typeof height !== 'undefined') user.height = height;
+
+    user.medicalProfile = {
+      ...user.medicalProfile?.toObject?.(),
+      bloodGroup,
+      diabetes,
+      hypertension,
+      asthma,
+      allergies,
+      chronicConditions,
+      currentMedications,
+      priorSurgeries,
+      smoking,
+      alcohol,
+      emergencyContact
+    };
+    user.surveyCompleted = true;
+    await user.save();
+
+    res.json({ message: 'Survey saved', surveyCompleted: true });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

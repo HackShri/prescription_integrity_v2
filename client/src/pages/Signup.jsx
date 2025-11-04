@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signupUser } from '../api/authService';
+import { AuthContext } from '../context/AuthContext';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -19,7 +20,12 @@ const Signup = () => {
   const [contactMethod, setContactMethod] = useState('email');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [stream, setStream] = useState(null);
+  const [photoDataUrl, setPhotoDataUrl] = useState('');
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -45,19 +51,65 @@ const Signup = () => {
     
     setIsLoading(true);
     try {
-      await signupUser({
+      if (photoDataUrl) {
+        // Save temporarily; will be uploaded right after first login
+        localStorage.setItem('pendingSignupPhoto', photoDataUrl);
+      }
+      const res = await signupUser({
         name: formData.name,
         email: contactMethod === 'email' ? formData.email : null,
         mobile: contactMethod === 'mobile' ? formData.mobile : null,
         password: formData.password,
         role: formData.role
       });
-      navigate('/login');
+      // If patient, log in immediately with returned token and go to survey
+      if (formData.role === 'patient' && res?.data?.token) {
+        await login(res.data.token);
+        navigate('/survey');
+      } else {
+        navigate('/login');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Signup failed');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const startCamera = async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: true });
+      setStream(s);
+      if (videoRef.current) {
+        videoRef.current.srcObject = s;
+      }
+    } catch (err) {
+      setError('Unable to access camera');
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      setStream(null);
+    }
+  };
+
+  useEffect(() => {
+    return () => stopCamera();
+  }, []);
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    setPhotoDataUrl(dataUrl);
+    stopCamera();
   };
 
   return (
@@ -197,6 +249,33 @@ const Signup = () => {
                 <option value="pharmacist">Pharmacist</option>
                 <option value="admin">Admin</option>
               </select>
+            </div>
+
+            {/* Photo capture (local only) */}
+            <div className="space-y-2">
+              <Label className="form-label">Your Photo (optional)</Label>
+              {!photoDataUrl && !stream && (
+                <Button type="button" variant="outline" onClick={startCamera}>Open Camera</Button>
+              )}
+              {stream && (
+                <div className="space-y-2">
+                  <video ref={videoRef} autoPlay playsInline className="w-full rounded border" />
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={capturePhoto}>Capture</Button>
+                    <Button type="button" variant="outline" onClick={stopCamera}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+              {photoDataUrl && (
+                <div className="space-y-2">
+                  <img src={photoDataUrl} alt="Captured" className="w-40 h-40 object-cover rounded-full border" />
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => { setPhotoDataUrl(''); startCamera(); }}>Retake</Button>
+                    <Button type="button" variant="ghost" onClick={() => setPhotoDataUrl('')}>Remove</Button>
+                  </div>
+                </div>
+              )}
+              <canvas ref={canvasRef} className="hidden" />
             </div>
             {error && (
               <div className="alert-error slide-in-top">

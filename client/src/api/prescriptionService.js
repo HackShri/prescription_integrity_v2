@@ -72,7 +72,8 @@ export const smartTranscribeAudio = (formData, age = 25, weight = 70) => {
     data.append('age', age.toString());
     data.append('weight', weight.toString());
     
-    return apiClient.post('/smart-transcribe', data, {
+    // Updated to server's consolidated endpoint
+    return apiClient.post('/generate-prescription', data, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
 };

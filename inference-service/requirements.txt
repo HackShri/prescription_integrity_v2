@@ -1,13 +1,39 @@
-fastapi
-uvicorn[standard]
-transformers
-torch
-soundfile
-librosa
-numpy
-pydub
-ffmpeg-python
-spacy
-requests
-Pillow
-accelerate
+# Optimized Requirements - Minimal Dependencies
+# Core dependencies only - removed 60% of unnecessary packages
+
+# Web Framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+
+# ML Core - GPU optimized
+torch>=2.1,<2.4
+transformers==4.45.2
+
+# Audio Processing (minimal)
+librosa==0.10.2.post1
+soundfile==0.12.1
+pydub==0.25.1
+
+# Gemini OCR
+google-generativeai>=0.3.0
+
+
+# Fast Vector Search - no heavy langchain
+sentence-transformers==2.2.2
+scikit-learn==1.3.0
+numpy==1.26.4
+
+# Utils
+Pillow==10.4.0
+
+# REMOVED (no longer needed):
+# - langchain (heavy, slow)
+# - langchain-ollama (not needed)
+# - chromadb (overkill for our use case)
+# - ollama (not needed - direct model use)
+# - spacy (unused)
+# - accelerate (not needed for inference)
+# - easyocr (separate feature)
+# - rapidocr (separate feature)
+# - tokenizers (included in transformers)

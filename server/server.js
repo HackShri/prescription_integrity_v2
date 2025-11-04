@@ -30,6 +30,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve uploaded avatars locally (no cloud storage)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Connect to MongoDB
 connectDB();
 
@@ -62,6 +65,7 @@ app.use('/api/prescriptions', require('./routes/prescriptions'));
 app.use('/api/pill-schedule', require('./routes/pillSchedule'));
 app.use('/api/chat', require('./routes/chatbot'));
 app.use("/api", transcribeRotes)
+app.use('/api/verification', require('./routes/verification'));
 
 
 // ✅ Create HTTP server and Socket.IO with correct CORS

@@ -34,7 +34,7 @@ router.post("/generate-prescription", upload.single("audio"), async (req, res) =
         headers: {
           ...formData.getHeaders(),
         },
-        timeout: 60000,
+        timeout: 120000,
       }
     );
 
@@ -129,7 +129,7 @@ router.post('/smart-transcribe', upload.single('audio'), async (req, res) => {
     const response = await axios.post(
       'http://localhost:8001/generate-prescription',
       formData,
-      { headers: { ...formData.getHeaders() }, timeout: 60000 }
+      { headers: { ...formData.getHeaders() }, timeout: 120000 }
     );
 
     fs.unlinkSync(filePath);
@@ -170,7 +170,7 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
     const response = await axios.post(
       'http://localhost:8001/generate-prescription',
       formData,
-      { headers: { ...formData.getHeaders() }, timeout: 60000 }
+      { headers: { ...formData.getHeaders() }, timeout: 120000 }
     );
 
     fs.unlinkSync(filePath);

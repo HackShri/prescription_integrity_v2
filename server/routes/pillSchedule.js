@@ -13,7 +13,23 @@ router.post('/', authMiddleware, roleMiddleware('patient'), async (req, res) => 
     }
     schedule.schedule.push({ name, time, date, taken: false });
     await schedule.save();
+
+    console.log('IO instance:', !!req.app.get('io'));
+    // Real-time notification scheduling (🚀 ADD THIS)
+    const io = req.app.get('io'); // get socket.io instance from app.js or server.js
+    const scheduleTime = new Date(`${date}T${time}:00+05:30`);
+    const delay = scheduleTime.getTime() - Date.now();
+
+    if (delay > 0) {
+      setTimeout(() => {
+        io.to(req.user.userId.toString()).emit('pillNotification', {
+          message: `Time to take your pill: ${name} 💊`,
+        });
+      }, delay);
+    }
+
     res.status(201).json(schedule);
+
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

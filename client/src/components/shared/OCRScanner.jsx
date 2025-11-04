@@ -50,9 +50,12 @@ const OCRScanner = () => {
   useEffect(() => {
     setPrescriptionData(prev => ({
       ...prev,
-      ...patientData
+      ...Object.fromEntries(
+        Object.entries(patientData).filter(([_, v]) => v !== '' && v != null)
+      )
     }));
   }, [patientData]);
+
 
   useEffect(() => {
     return () => {
@@ -220,9 +223,9 @@ const OCRScanner = () => {
 
   const parsePrescriptionText = (text) => {
     if (!text) return;
-    
+
     console.log('Starting entity extraction from:', text);
-    
+
     const lines = text.split('\n').map(line => line.trim()).filter(line => line);
     const lowerText = text.toLowerCase();
 
@@ -250,7 +253,7 @@ const OCRScanner = () => {
       /email:?\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,})/gi,
       /e-?mail:?\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,})/gi
     ];
-    
+
     for (const pattern of emailPatterns) {
       const matches = text.match(pattern);
       if (matches && matches.length > 0) {
@@ -350,7 +353,57 @@ const OCRScanner = () => {
 
     // Advanced medication extraction with multiple patterns
     const medications = [];
-    
+
+    // Pattern 0: Gemini structured section parsing
+    // The Gemini prompt returns something like:
+    // MEDICATIONS:
+    // - Name: Paracetamol
+    // - Dosage: 500mg
+    // - Quantity: 10 tablets
+    // - Frequency: Twice daily
+    // - Timing: After meals
+    // - Duration: 5 days
+    // - Instructions: ...
+    // (then possibly a blank line and next medicine repeating the keys)
+    try {
+      const medsSectionMatch = text.match(/(?:MEDICATIONS?|PRESCRIPTION)\s*[:\n]\s*([\s\S]*?)(?:\n\s*(?:GENERAL INSTRUCTIONS|INSTRUCTIONS|DIAGNOSIS|DOCTOR INFO|PATIENT INFO)\b|$)/i);
+      if (medsSectionMatch) {
+        const medsSection = medsSectionMatch[1];
+        // Split into chunks starting with Name or - Name
+        const chunks = medsSection
+          .split(/\n\s*(?=(?:-\s*)?Name\s*:)/i)
+          .map(c => c.trim())
+          .filter(Boolean);
+        chunks.forEach(chunk => {
+          const getVal = (label) => {
+            const m = chunk.match(new RegExp(`(?:-\\s*)?${label}\\s*:\\s*([^\n]+)`, 'i'));
+            return m ? m[1].trim() : '';
+          };
+          const name = getVal('Name');
+          const dosage = getVal('Dosage');
+          const quantityRaw = getVal('Quantity');
+          const frequency = getVal('Frequency');
+          const timing = getVal('Timing');
+          const duration = getVal('Duration');
+          const instr = getVal('Instructions');
+          if (name || dosage || frequency || timing || duration || quantityRaw || instr) {
+            const quantity = (quantityRaw.match(/\d+\s*(?:tab|tablet|cap|capsule|ml|drops?|bottle|units?)/i)?.[0] || quantityRaw).trim();
+            medications.push({
+              name: (name || '').replace(/^(?:\d+\.|-\s*)/, '').trim(),
+              dosage: dosage || '',
+              quantity: quantity || '',
+              frequency: frequency || '',
+              timing: timing || '',
+              duration: duration || '',
+              instructions: instr || chunk.replace(/\s+/g, ' ').trim()
+            });
+          }
+        });
+      }
+    } catch (e) {
+      // Fallback to other patterns below
+    }
+
     // Pattern 1: Enhanced numbered list format (1. Medicine name dosage quantity frequency)
     const numberedMedPattern = /^(\d+\.?\s*)(.*?)(\d+(?:\.\d+)?\s*(?:mg|ml|g|iu|mcg|units?).*?)(?:\s+(\d+)\s*(?:tab|tablet|cap|capsule|ml|drops?))?(?:\s+(.*?))?$/gmi;
     let match;
@@ -359,7 +412,7 @@ const OCRScanner = () => {
       const dosageInfo = match[3].trim();
       const quantityInfo = match[4] ? match[4].trim() : '';
       const additionalInfo = match[5] ? match[5].trim() : '';
-      
+
       if (medName && dosageInfo) {
         medications.push(extractMedicationDetails(medName, dosageInfo, match[0], quantityInfo, additionalInfo));
       }
@@ -373,7 +426,7 @@ const OCRScanner = () => {
         const dosageInfo = match[2].trim();
         const quantityInfo = match[3] ? match[3].trim() : '';
         const additionalInfo = match[4] ? match[4].trim() : '';
-        
+
         if (isValidMedicineName(medName) && dosageInfo) {
           medications.push(extractMedicationDetails(medName, dosageInfo, match[0], quantityInfo, additionalInfo));
         }
@@ -385,7 +438,7 @@ const OCRScanner = () => {
     if (rxSectionMatch && medications.length === 0) {
       const rxSection = rxSectionMatch[1];
       const rxLines = rxSection.split('\n').filter(line => line.trim());
-      
+
       rxLines.forEach(line => {
         const medMatch = line.match(/^(\d+\.?\s*)?(.*?)(\d+(?:\.\d+)?\s*(?:mg|ml|g|iu|mcg|units?).*?)(?:\s+(\d+)\s*(?:tab|tablet|cap|capsule|ml|drops?))?(?:\s+(.*?))?$/i);
         if (medMatch) {
@@ -393,7 +446,7 @@ const OCRScanner = () => {
           const dosageInfo = medMatch[3].trim();
           const quantityInfo = medMatch[4] ? medMatch[4].trim() : '';
           const additionalInfo = medMatch[5] ? medMatch[5].trim() : '';
-          
+
           if (medName && dosageInfo) {
             medications.push(extractMedicationDetails(medName, dosageInfo, line, quantityInfo, additionalInfo));
           }
@@ -477,7 +530,7 @@ const OCRScanner = () => {
           /(?:quantity|qty|total):?\s*(\d+)/gi,
           /(?:buy|purchase)\s+(\d+)/gi
         ];
-        
+
         for (const pattern of quantityPatterns) {
           const quantityMatch = fullLine.match(pattern);
           if (quantityMatch) {
@@ -495,7 +548,7 @@ const OCRScanner = () => {
       if (!name || name.length < 3 || name.length > 50) return false;
       if (/^\d+$/.test(name)) return false; // Just numbers
       if (!/[a-zA-Z]/.test(name)) return false; // Must contain letters
-      
+
       const excludeWords = ['patient', 'doctor', 'date', 'prescription', 'instructions', 'note', 'age', 'weight', 'height'];
       return !excludeWords.some(word => name.toLowerCase().includes(word));
     }
@@ -508,7 +561,7 @@ const OCRScanner = () => {
       /(?:mr|mrs|ms|miss)\s+([A-Za-z\s]{2,50})/gi,
       /^([A-Za-z\s]{2,50})\s*(?:age|dob|\d+)/gmi
     ];
-    
+
     for (const pattern of patientNamePatterns) {
       const match = text.match(pattern);
       if (match && match[1] && match[1].trim().length > 2) {
@@ -529,7 +582,7 @@ const OCRScanner = () => {
       /(?:consultant):?\s*([A-Za-z\s]{2,30})/gi,
       /(?:md|mbbs):?\s*([A-Za-z\s]{2,30})/gi
     ];
-    
+
     for (const pattern of doctorNamePatterns) {
       const match = text.match(pattern);
       if (match && match[1] && match[1].trim().length > 2) {
@@ -545,7 +598,7 @@ const OCRScanner = () => {
       /(?:doctor|dr|physician).*?([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,})/gi,
       /(?:consultant).*?([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,})/gi
     ];
-    
+
     for (const pattern of doctorEmailPatterns) {
       const match = text.match(pattern);
       if (match && match[1]) {
@@ -558,7 +611,7 @@ const OCRScanner = () => {
     const doctorMobilePatterns = [
       /(?:doctor|dr|physician|consultant).*?(?:phone|mobile|contact):?\s*([+]?[\d\s\-\(\)]{10,15})/gi
     ];
-    
+
     for (const pattern of doctorMobilePatterns) {
       const match = text.match(pattern);
       if (match && match[1]) {
@@ -575,7 +628,7 @@ const OCRScanner = () => {
       /(?:clinic|hospital|medical center|health center):?\s*([A-Za-z\s]{2,50})/gi,
       /(?:address|location):?\s*([A-Za-z0-9\s,\.]{10,100})/gi
     ];
-    
+
     for (const pattern of clinicPatterns) {
       const match = text.match(pattern);
       if (match && match[1] && match[1].trim().length > 5) {
@@ -622,11 +675,11 @@ const OCRScanner = () => {
           if (year.length === 2) {
             year = '20' + year; // Assume 20xx for 2-digit years
           }
-          
+
           // Assume DD/MM/YYYY or DD-MM-YYYY format
           const day = parts[0].padStart(2, '0');
           const month = parts[1].padStart(2, '0');
-          
+
           parsedData.expiresAt = `${year}-${month}-${day}`;
           break;
         }
@@ -635,7 +688,10 @@ const OCRScanner = () => {
 
     console.log('Extracted data:', parsedData);
     setPrescriptionData(parsedData);
-    
+    setTimeout(() => {
+      setPrescriptionData(prev => ({ ...prev }));
+    }, 100);
+
     // Show extraction summary
     const extractedCount = [
       parsedData.patientName ? 'Patient Name' : null,
@@ -665,7 +721,7 @@ const OCRScanner = () => {
       ...prev,
       [field]: value
     }));
-    
+
     // Also update the shared patient search if it's a patient field
     if (field === 'patientEmail' || field === 'patientMobile') {
       updatePatientData(field, value);
@@ -715,10 +771,10 @@ const OCRScanner = () => {
 
     setIsCheckingDrugs(true);
     setError('');
-    
+
     try {
       const drugNames = prescriptionData.medications.map(med => med.name).filter(name => name.trim());
-      
+
       if (drugNames.length === 0) {
         setError('No valid drug names found to check.');
         setIsCheckingDrugs(false);
@@ -744,7 +800,7 @@ const OCRScanner = () => {
 
       const result = await response.json();
       setDrugInteractions(result.interactions || []);
-      
+
       if (result.interactions && result.interactions.length > 0) {
         setError(`⚠️ Found ${result.interactions.length} potential drug interaction(s). Please review carefully.`);
       } else {
@@ -801,7 +857,7 @@ const OCRScanner = () => {
 
       const result = await response.json();
       setSuccess(`✅ Offline prescription created successfully! Prescription ID: ${result._id.slice(-6)}`);
-      
+
       // Reset form after successful creation
       setTimeout(() => {
         resetScanner();
@@ -971,7 +1027,7 @@ const OCRScanner = () => {
               )}
 
               {/* Patient Search Section */}
-              <PatientSearch 
+              <PatientSearch
                 onPatientFound={handlePatientIdSearch}
                 placeholder="Enter patient email or mobile..."
                 className="p-3"
@@ -1048,7 +1104,7 @@ const OCRScanner = () => {
                       />
                     </div>
                   </div>
-                  
+
                   {/* Clinic Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div className="space-y-2">
@@ -1107,16 +1163,16 @@ const OCRScanner = () => {
                           Remove
                         </button>
                       </div>
-                      
+
                       {/* Drug Interaction Warning */}
-                      {drugInteractions.some(interaction => 
-                        interaction.drug1.toLowerCase() === med.name.toLowerCase() || 
+                      {drugInteractions.some(interaction =>
+                        interaction.drug1.toLowerCase() === med.name.toLowerCase() ||
                         interaction.drug2.toLowerCase() === med.name.toLowerCase()
                       ) && (
-                        <div className="p-2 bg-red-100 border border-red-300 rounded text-red-800 text-sm">
-                          ⚠️ Potential drug interaction detected
-                        </div>
-                      )}
+                          <div className="p-2 bg-red-100 border border-red-300 rounded text-red-800 text-sm">
+                            ⚠️ Potential drug interaction detected
+                          </div>
+                        )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         <input
@@ -1195,7 +1251,7 @@ const OCRScanner = () => {
                         )}
                       </button>
                     </div>
-                    
+
                     {drugInteractions.length > 0 && (
                       <div className="space-y-2">
                         <h5 className="font-medium text-red-800">⚠️ Drug Interactions Detected:</h5>

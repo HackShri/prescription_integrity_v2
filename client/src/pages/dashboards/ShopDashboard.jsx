@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getShopHistory, getPrescriptionByShortId, markPrescriptionAsUsed } from '../../api/prescriptionService';
+import { checkDangerousForPrescription, requestVerification, getVerificationStatus } from '../../api/verificationService';
 import jsQR from 'jsqr';
 import { 
   QrCode, Pill, User, Calendar, CheckCircle, XCircle, AlertTriangle, History, Camera, CameraOff, RotateCcw, Shield, Clock
@@ -17,6 +18,7 @@ const ShopDashboard = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [prescriptionHistory, setPrescriptionHistory] = useState([]);
   const [activeTab, setActiveTab] = useState('scan');
+  const [dangerousInfo, setDangerousInfo] = useState({ flagged: [], status: 'none' });
   
   const videoRef = useRef(null);
   const canvasRef = useRef(document.createElement('canvas'));
@@ -103,6 +105,16 @@ const ShopDashboard = () => {
       const { data } = await getPrescriptionByShortId(shortId);
       setScannedPrescription(data);
       setSuccess('Prescription found!');
+      // Check dangerous list and status
+      try {
+        const [{ data: check }, { data: status }] = await Promise.all([
+          checkDangerousForPrescription(data._id),
+          getVerificationStatus(data._id)
+        ]);
+        setDangerousInfo({ flagged: check.flagged || [], status: status?.status || 'none' });
+      } catch (_) {
+        setDangerousInfo({ flagged: [], status: 'none' });
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch prescription');
     } finally {
@@ -113,6 +125,13 @@ const ShopDashboard = () => {
   const handleDispenseMedicine = async () => {
     try {
       setIsProcessing(true);
+      // Guard: block dispensing if dangerous and not verified
+      const hasFlagged = (dangerousInfo.flagged || []).length > 0;
+      const isVerified = dangerousInfo.status === 'verified';
+      if (hasFlagged && !isVerified) {
+        setError('Dispense blocked: dangerous medication requires doctor verification.');
+        return;
+      }
       await markPrescriptionAsUsed(scannedPrescription._id);
       setSuccess('Medicine dispensed successfully!');
       setScannedPrescription(null);
@@ -122,6 +141,19 @@ const ShopDashboard = () => {
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to dispense medicine');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRequestVerification = async () => {
+    try {
+      setIsProcessing(true);
+      await requestVerification(scannedPrescription._id, 'Pharmacy request for dangerous medication');
+      setDangerousInfo(prev => ({ ...prev, status: 'pending' }));
+      setSuccess('Verification requested from doctor.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to request verification');
     } finally {
       setIsProcessing(false);
     }
@@ -179,8 +211,21 @@ const ShopDashboard = () => {
                   <p><Calendar className="w-4 h-4 inline mr-2 text-gray-500" /><strong>Expires:</strong> {new Date(scannedPrescription.expiresAt).toLocaleDateString()}</p>
                   <p><Shield className="w-4 h-4 inline mr-2 text-gray-500" /><strong>Usage:</strong> {scannedPrescription.used} / {scannedPrescription.usageLimit}</p>
                   <div><Pill className="w-4 h-4 inline mr-2 text-gray-500" /><strong>Medications:</strong> {scannedPrescription.medications.map(m => m.name).join(', ')}</div>
+                  {/* Dangerous drug notice and actions */}
+                  {(dangerousInfo.flagged.length > 0) && (
+                    <div className="p-3 rounded bg-yellow-50 border border-yellow-200">
+                      <p className="text-yellow-800 text-sm font-medium">Potentially dangerous medication detected:</p>
+                      <ul className="list-disc list-inside text-sm text-yellow-800">
+                        {dangerousInfo.flagged.map(f => (<li key={f.name}>{f.name} — {f.reason}</li>))}
+                      </ul>
+                      <p className="text-xs text-yellow-700 mt-1">Verification status: {dangerousInfo.status}</p>
+                    </div>
+                  )}
                   <div className="flex space-x-4 pt-4">
-                    <Button onClick={handleDispenseMedicine} disabled={isProcessing || getStatusConfig(scannedPrescription).status !== 'Active'} className="button-style flex-1"><CheckCircle className="w-4 h-4 mr-2" />Dispense</Button>
+                    <Button onClick={handleDispenseMedicine} disabled={isProcessing || getStatusConfig(scannedPrescription).status !== 'Active' || (dangerousInfo.flagged.length > 0 && dangerousInfo.status !== 'verified')} className="button-style flex-1"><CheckCircle className="w-4 h-4 mr-2" />Dispense</Button>
+                    {(dangerousInfo.flagged.length > 0 && dangerousInfo.status !== 'verified') && (
+                      <Button onClick={handleRequestVerification} variant="outline" className="flex-1"><Shield className="w-4 h-4 mr-2" />Ask Verification</Button>
+                    )}
                     <Button onClick={resetScanner} variant="outline" className="flex-1"><RotateCcw className="w-4 h-4 mr-2" />Scan Another</Button>
                   </div>
                 </CardContent>

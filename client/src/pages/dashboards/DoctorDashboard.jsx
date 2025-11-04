@@ -30,10 +30,31 @@ import { AlertDescription } from '../../components/ui/alert';
 import MedicationForm from '../../components/shared/MedicationForm';
 import PatientSearch from '../../components/shared/PatientSearch';
 import Header from '../../components/layout/Header';
+import { listPendingVerifications, approveVerification } from '../../api/verificationService';
 
 const socket = io('http://localhost:5000');
 
 const DoctorDashboard = () => {
+  const [pendingVerifications, setPendingVerifications] = useState([]);
+
+  useEffect(() => {
+    const fetchPending = async () => {
+      try {
+        const { data } = await listPendingVerifications();
+        setPendingVerifications(data || []);
+      } catch (_) {}
+    };
+    fetchPending();
+    const id = setInterval(fetchPending, 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleApprove = async (p) => {
+    try {
+      await approveVerification(p._id, true);
+      setPendingVerifications(prev => prev.filter(x => x._id !== p._id));
+    } catch (_) {}
+  };
   const [isCreating, setIsCreating] = useState(false);
   const [prescription, setPrescription] = useState({
     patientEmail: '',
@@ -323,6 +344,30 @@ const DoctorDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Minimal Verification Panel */}
+        <div className="mb-8">
+          <Card className="card-style">
+            <CardHeader><CardTitle>Verification Requests</CardTitle></CardHeader>
+            <CardContent>
+              {pendingVerifications.length === 0 ? (
+                <p className="text-sm text-gray-500">No pending requests</p>
+              ) : (
+                <div className="space-y-3">
+                  {pendingVerifications.map(p => (
+                    <div key={p._id} className="flex items-center justify-between p-3 bg-white/50 rounded">
+                      <div>
+                        <p className="font-medium">Rx #{p._id.slice(-6)}</p>
+                        <p className="text-xs text-gray-600">Patient: {p.patientName || p.patientId?.name}</p>
+                      </div>
+                      <Button size="sm" onClick={() => handleApprove(p)}><CheckCircle className="w-4 h-4 mr-2" />Approve</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {!isCreating && !generatedPrescription && (
           <Card className="card-style w-full max-w-2xl mx-auto slide-in-bottom">
