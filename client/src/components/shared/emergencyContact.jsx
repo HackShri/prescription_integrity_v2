@@ -144,7 +144,7 @@ const EmergencyContact = () => {
       return (
         <Button
           onClick={() => window.open(`tel:${phone}`, '_self')}
-          className={isPrimary ? "bg-red-500 hover:bg-red-600 text-white" : "bg-green-500 hover:bg-green-600 text-white"}
+          className={isPrimary ? "bg-destructive hover:bg-destructive/90 text-white" : "bg-teal-500 hover:bg-teal-600 text-white"}
           size={isPrimary ? "lg" : "sm"}
         >
           <Phone className={isPrimary ? "w-5 h-5 mr-2" : "w-4 h-4"} />
@@ -158,7 +158,7 @@ const EmergencyContact = () => {
       <Button
         onClick={() => window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}`, '_blank')}
         title="Open WhatsApp Chat"
-        className={isPrimary ? "bg-red-500 hover:bg-red-600 text-white" : "bg-green-500 hover:bg-green-600 text-white"}
+        className={isPrimary ? "bg-destructive hover:bg-destructive/90 text-white" : "bg-teal-500 hover:bg-teal-600 text-white"}
         size={isPrimary ? "lg" : "sm"}
       >
         <Phone className={isPrimary ? "w-5 h-5 mr-2" : "w-4 h-4"} />
@@ -171,17 +171,12 @@ const EmergencyContact = () => {
   const otherContacts = contacts.filter(contact => !contact.isPrimary);
 
   return (
-    <div className="min-h-screen gradient-primary relative overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-20 w-72 h-72 bg-red-500/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-72 h-72 bg-orange-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-      </div>
-
+    <div className="min-h-screen bg-brand-50">
       <Header />
 
-      <main className="p-6 max-w-4xl mx-auto relative z-10">
-        <div className="text-center mb-8 slide-in-top">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent mb-2">
+      <main className="p-6 max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-brand-700 mb-2">
             Emergency Contacts
           </h1>
           <p className="text-muted-foreground text-lg">
@@ -199,9 +194,9 @@ const EmergencyContact = () => {
         )}
 
         {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg slide-in-top">
-            <div className="flex items-center text-green-800">
-              <CheckCircle className="w-5 h-5 mr-2" />
+          <div className="alert-success mb-6">
+            <div className="flex items-center text-teal-700">
+              <CheckCircle className="w-5 h-5 mr-2 text-teal-600" />
               {success}
             </div>
           </div>
@@ -209,10 +204,10 @@ const EmergencyContact = () => {
 
         {/* Primary Contact Section */}
         {primaryContact && (
-          <Card className="card-style mb-6 border-red-200 bg-red-50/50">
+          <Card className="card-style mb-6 bg-brand-50 border border-brand-100">
             <CardHeader>
-              <CardTitle className="flex items-center text-red-600">
-                <Heart className="w-5 h-5 mr-2" />
+              <CardTitle className="flex items-center text-brand-700">
+                <Heart className="w-5 h-5 mr-2 text-destructive" />
                 Primary Emergency Contact
               </CardTitle>
             </CardHeader>
@@ -220,8 +215,8 @@ const EmergencyContact = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-lg">{primaryContact.name}</h3>
-                  <p className="text-gray-600">{primaryContact.relationship}</p>
-                  <p className="text-gray-500">{primaryContact.phone}</p>
+                  <p className="text-slate-600">{primaryContact.relationship}</p>
+                  <p className="text-slate-500">{primaryContact.phone}</p>
                 </div>
                 <div className="flex space-x-2">
                   <CallButton phone={primaryContact.phone} isPrimary={true} />
@@ -328,16 +323,16 @@ const EmergencyContact = () => {
         {/* Other Contacts */}
         {otherContacts.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Other Emergency Contacts</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-4">Other Emergency Contacts</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {otherContacts.map((contact) => (
-                <Card key={contact.id} className="card-style hover:scale-105 transition-all duration-300">
+                <Card key={contact.id} className="card-style transition-all duration-200 hover:-translate-y-1">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-semibold">{contact.name}</h3>
-                        <p className="text-gray-600 text-sm">{contact.relationship}</p>
-                        <p className="text-gray-500 text-sm">{contact.phone}</p>
+                        <p className="text-slate-600 text-sm">{contact.relationship}</p>
+                        <p className="text-slate-500 text-sm">{contact.phone}</p>
                       </div>
                       <div className="flex space-x-1">
                         <CallButton phone={contact.phone} />
@@ -352,7 +347,7 @@ const EmergencyContact = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDelete(contact.id)}
-                          className="text-red-500 hover:text-red-700"
+                          className="text-destructive hover:text-destructive/80 border-destructive/30"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -379,15 +374,15 @@ const EmergencyContact = () => {
         )}
 
         {/* Emergency Instructions */}
-        <Card className="card-style mt-8 bg-yellow-50 border-yellow-200">
+        <Card className="card-style mt-8 bg-warning/10 border border-warning/40">
           <CardHeader>
-            <CardTitle className="flex items-center text-yellow-700">
-              <AlertTriangle className="w-5 h-5 mr-2" />
+            <CardTitle className="flex items-center text-warning">
+              <AlertTriangle className="w-5 h-5 mr-2 text-warning" />
               Emergency Instructions
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 text-sm text-yellow-800">
+            <div className="space-y-2 text-sm text-warning">
               <p>• In case of emergency, call your primary contact immediately</p>
               <p>• Keep your emergency contacts updated with current information</p>
               <p>• Ensure your contacts are aware they are listed as emergency contacts</p>

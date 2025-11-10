@@ -311,18 +311,14 @@ const DoctorDashboard = () => {
   const displaySuccess = patientSuccess;
 
   return (
-    <div className="min-h-screen gradient-secondary relative overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-20 w-72 h-72 bg-green-500/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-      </div>
+    <div className="min-h-screen bg-brand-50">
       <Header />
-      <main className="p-6 max-w-6xl mx-auto relative z-10">
-        <div className="text-center mb-8 slide-in-top">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent mb-2">
+      <main className="p-6 max-w-6xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-brand-700 mb-2">
             Doctor Dashboard
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-slate-600 text-lg">
             Create and manage digital prescriptions for your patients
           </p>
         </div>
@@ -337,9 +333,9 @@ const DoctorDashboard = () => {
         )}
 
         {displaySuccess && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg slide-in-top">
-            <div className="flex items-center text-green-800">
-              <CheckCircle className="w-5 h-5 mr-2" />
+          <div className="alert-success mb-6">
+            <div className="flex items-center text-teal-700">
+              <CheckCircle className="w-5 h-5 mr-2 text-teal-600" />
               {displaySuccess}
             </div>
           </div>
@@ -348,19 +344,19 @@ const DoctorDashboard = () => {
         {/* Minimal Verification Panel */}
         <div className="mb-8">
           <Card className="card-style">
-            <CardHeader><CardTitle>Verification Requests</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-slate-900">Verification Requests</CardTitle></CardHeader>
             <CardContent>
               {pendingVerifications.length === 0 ? (
-                <p className="text-sm text-gray-500">No pending requests</p>
+                <p className="text-sm text-slate-500">No pending requests</p>
               ) : (
                 <div className="space-y-3">
                   {pendingVerifications.map(p => (
-                    <div key={p._id} className="flex items-center justify-between p-3 bg-white/50 rounded">
+                    <div key={p._id} className="flex items-center justify-between p-3 bg-white border border-border/60 rounded-lg">
                       <div>
-                        <p className="font-medium">Rx #{p._id.slice(-6)}</p>
-                        <p className="text-xs text-gray-600">Patient: {p.patientName || p.patientId?.name}</p>
+                        <p className="font-medium text-slate-900">Rx #{p._id.slice(-6)}</p>
+                        <p className="text-xs text-slate-600">Patient: {p.patientName || p.patientId?.name}</p>
                       </div>
-                      <Button size="sm" onClick={() => handleApprove(p)}><CheckCircle className="w-4 h-4 mr-2" />Approve</Button>
+                      <Button size="sm" className="button-secondary" onClick={() => handleApprove(p)}><CheckCircle className="w-4 h-4 mr-2" />Approve</Button>
                     </div>
                   ))}
                 </div>
@@ -372,13 +368,13 @@ const DoctorDashboard = () => {
         {!isCreating && !generatedPrescription && (
           <Card className="card-style w-full max-w-2xl mx-auto slide-in-bottom">
             <CardHeader className="text-center">
-              <div className="mx-auto w-16 h-16 bg-gradient-to-r from-secondary to-primary rounded-full flex items-center justify-center mb-4">
-                <FileText className="w-8 h-8 text-white" />
+              <div className="mx-auto w-16 h-16 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center mb-4">
+                <FileText className="w-8 h-8" />
               </div>
               <CardTitle className="card-header-style">Create Prescription</CardTitle>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => setIsCreating(true)} className="w-full button-secondary h-12 text-lg">
+              <Button onClick={() => setIsCreating(true)} className="w-full button-style h-12 text-lg">
                 Start New Prescription
               </Button>
             </CardContent>

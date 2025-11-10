@@ -44,35 +44,28 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen gradient-primary relative overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
-      </div>
-
-      <header className="relative z-10 pt-8 pb-16 px-4">
+    <div className="min-h-screen bg-brand-50">
+      <header className="pt-8 pb-16 px-4">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 slide-in-top">
-            <span className="bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
-              Prescription
-            </span>
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 text-brand-700 leading-tight">
+            Prescription
             <br />
-            <span className="bg-gradient-to-r from-green-500 to-blue-500 bg-clip-text text-transparent">
-              Integrity
-            </span>
+            <span className="text-brand-500">Integrity</span>
           </h1>
-          <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto slide-in-bottom">
+          <p className="text-xl md:text-2xl text-slate-600 mb-8 max-w-3xl mx-auto">
             Secure, transparent, and intelligent prescription management powered by blockchain technology
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center slide-in-bottom" style={{animationDelay: '0.2s'}}>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/signup">
               <Button className="button-style text-lg px-8 py-4">
                 Get Started
               </Button>
             </Link>
             <Link to="/login">
-              <Button variant="outline" className="text-lg px-8 py-4 border-2 border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white transition-all duration-300">
+              <Button
+                variant="outline"
+                className="text-lg px-8 py-4 border border-brand-300 text-brand-700 hover:bg-brand-600 hover:text-white transition-colors duration-200"
+              >
                 Sign In
               </Button>
             </Link>
@@ -80,30 +73,30 @@ const Home = () => {
         </div>
       </header>
 
-      <section className="relative z-10 py-16 px-4">
+      <section className="py-16 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4 slide-in-top">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
               Why Choose Prescription Integrity?
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto slide-in-bottom">
+            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
               Our platform combines cutting-edge technology with user-friendly design to revolutionize prescription management
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => (
-              <Card key={index} className="card-style slide-in-bottom" style={{animationDelay: `${index * 0.1}s`}}>
+              <Card key={index} className="card-style">
                 <CardHeader className="text-center">
-                  <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mb-4 text-white">
+                  <div className="mx-auto w-16 h-16 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center mb-4">
                     {feature.icon}
                   </div>
-                  <CardTitle className="text-xl font-bold text-gray-900">
+                  <CardTitle className="text-xl font-semibold text-slate-900">
                     {feature.title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className="text-gray-600 leading-relaxed">
+                  <CardDescription className="text-slate-600 leading-relaxed">
                     {feature.description}
                   </CardDescription>
                 </CardContent>
@@ -113,14 +106,14 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="relative z-10 py-16 px-4">
+      <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <Card className="glass p-12 slide-in-bottom">
+          <Card className="glass p-12">
             <CardHeader>
-              <CardTitle className="text-3xl font-bold text-gray-900 mb-4">
+              <CardTitle className="text-3xl font-bold text-slate-900 mb-4">
                 Ready to Transform Your Prescription Management?
               </CardTitle>
-              <CardDescription className="text-xl text-gray-600">
+              <CardDescription className="text-xl text-slate-600">
                 Join thousands of users who trust our platform for secure and efficient prescription management
               </CardDescription>
             </CardHeader>
@@ -132,7 +125,10 @@ const Home = () => {
                   </Button>
                 </Link>
                 <Link to="/about">
-                  <Button variant="outline" className="text-lg px-8 py-4 border-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-white transition-all duration-300">
+                  <Button
+                    variant="outline"
+                    className="text-lg px-8 py-4 border border-teal-300 text-teal-700 hover:bg-teal-500 hover:text-white transition-colors duration-200"
+                  >
                     Learn More
                   </Button>
                 </Link>
@@ -142,9 +138,9 @@ const Home = () => {
         </div>
       </section>
 
-      <footer className="relative z-10 py-8 px-4 border-t border-gray-200">
+      <footer className="py-8 px-4 border-t border-border/60 bg-white/80">
         <div className="max-w-7xl mx-auto text-center">
-          <p className="text-gray-600">
+          <p className="text-slate-500">
             © 2024 Prescription Integrity. All rights reserved.
           </p>
         </div>

@@ -97,12 +97,12 @@ const PillTimeline = () => {
   return (
     <div className="p-2">
       {successMessage && (
-        <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+        <div className="mb-4 alert-success">
           {successMessage}
         </div>
       )}
       {notification && (
-        <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-lg">
+        <div className="mb-4 bg-warning/10 border border-warning/40 text-warning rounded-lg p-3">
           {notification}
         </div>
       )}
@@ -116,26 +116,26 @@ const PillTimeline = () => {
             className="w-auto"
           />
         </div>
-        <Button onClick={() => setShowAddPill(true)} size="icon" className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={() => setShowAddPill(true)} size="icon" className="bg-brand-600 hover:bg-brand-700 text-white">
           <Plus className="w-4 h-4" />
         </Button>
       </div>
       {pills.length === 0 ? (
-        <p className="text-center text-gray-500">No pills scheduled</p>
+        <p className="text-center text-slate-500">No pills scheduled</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {pills.map(pill => (
-            <Card key={pill._id} className="rounded-xl shadow-md p-0 flex flex-col items-center justify-center h-32 w-full">
+            <Card key={pill._id} className="rounded-xl shadow-md p-0 flex flex-col items-center justify-center h-32 w-full bg-white">
               <CardContent className="flex flex-col items-center justify-center p-2 h-full w-full">
                 <div className="flex items-center space-x-2 mb-1">
-                  <Clock className="w-4 h-4 text-blue-400" />
-                  <span className="text-sm text-gray-700 font-semibold">{pill.time}</span>
+                  <Clock className="w-4 h-4 text-brand-400" />
+                  <span className="text-sm text-slate-700 font-semibold">{pill.time}</span>
                 </div>
                 <h4 className="font-medium text-center text-base mb-2 truncate w-full">{pill.name}</h4>
                 <Button
                   onClick={() => togglePillTaken(pill._id)}
                   size="icon"
-                  className={pill.taken ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}
+                  className={pill.taken ? 'bg-teal-100 text-teal-600' : 'bg-slate-100 text-slate-400'}
                 >
                   <Check className="w-4 h-4" />
                 </Button>
@@ -145,15 +145,15 @@ const PillTimeline = () => {
         </div>
       )}
       {showAddPill && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
           <Card ref={modalRef} className="max-w-sm w-full bg-white shadow-2xl">
             <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-bold text-gray-900">Add New Pill</CardTitle>
-              <p className="text-sm text-gray-600">Schedule a medication for {new Date(selectedDate).toLocaleDateString()}</p>
+              <CardTitle className="text-xl font-bold text-slate-900">Add New Pill</CardTitle>
+              <p className="text-sm text-slate-600">Schedule a medication for {new Date(selectedDate).toLocaleDateString()}</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Medicine Name</label>
+                <label className="text-sm font-medium text-slate-700">Medicine Name</label>
                 <Input
                   value={pillName}
                   onChange={(e) => setPillName(e.target.value)}
@@ -163,7 +163,7 @@ const PillTimeline = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Time to Take</label>
+                <label className="text-sm font-medium text-slate-700">Time to Take</label>
                 <Input
                   type="time"
                   value={pillTime}
@@ -175,7 +175,7 @@ const PillTimeline = () => {
             <div className="flex space-x-3 p-4 pt-0">
               <Button
                 onClick={addPill}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                className="flex-1 button-style"
                 disabled={!pillName || !pillTime}
               >
                 Save Pill

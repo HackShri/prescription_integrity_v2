@@ -93,7 +93,7 @@ const MedicationForm = ({ medications, onMedicationsChange }) => {
       </div>
 
       {/* Add New Medication Form */}
-      <Card className="border-2 border-dashed border-gray-300">
+      <Card className="border-2 border-dashed border-brand-200 bg-white">
         <CardHeader>
           <CardTitle className="text-sm text-gray-600">Add New Medication</CardTitle>
         </CardHeader>
@@ -139,7 +139,7 @@ const MedicationForm = ({ medications, onMedicationsChange }) => {
                 id="frequency"
                 value={newMedication.frequency}
                 onChange={(e) => handleInputChange('frequency', e.target.value)}
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full mt-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
               >
                 <option value="">Select frequency</option>
                 {frequencyOptions.map((option) => (
@@ -153,7 +153,7 @@ const MedicationForm = ({ medications, onMedicationsChange }) => {
                 id="timing"
                 value={newMedication.timing}
                 onChange={(e) => handleInputChange('timing', e.target.value)}
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full mt-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
               >
                 <option value="">Select timing</option>
                 {timingOptions.map((option) => (
@@ -170,7 +170,7 @@ const MedicationForm = ({ medications, onMedicationsChange }) => {
                 id="duration"
                 value={newMedication.duration}
                 onChange={(e) => handleInputChange('duration', e.target.value)}
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full mt-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
               >
                 <option value="">Select duration</option>
                 {durationOptions.map((option) => (
@@ -207,14 +207,14 @@ const MedicationForm = ({ medications, onMedicationsChange }) => {
         <div className="space-y-3">
           <h4 className="font-medium text-gray-700">Added Medications ({medications.length})</h4>
           {medications.map((med, index) => (
-            <Card key={index} className="border-l-4 border-l-primary">
+            <Card key={index} className="border-l-4 border-l-primary bg-white">
               <CardContent className="pt-4">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-2">
                       <Pill className="w-4 h-4 text-primary" />
                       <h5 className="font-semibold text-lg">{med.name}</h5>
-                      <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      <span className="text-sm bg-brand-100 text-brand-700 px-2 py-1 rounded">
                         {med.dosage}
                       </span>
                     </div>

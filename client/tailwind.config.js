@@ -4,58 +4,86 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary Medical Colors
+        brand: {
+          50: '#f4f8ff',
+          100: '#e7f1ff',
+          200: '#cee3ff',
+          300: '#adcff9',
+          400: '#86b6f0',
+          500: '#5d99e2',
+          600: '#3c82d6',
+          700: '#2f6ab0',
+          800: '#27558a',
+          900: '#1c3b5c',
+        },
+        teal: {
+          50: '#edfdf9',
+          100: '#d3f7ee',
+          200: '#a6ecdd',
+          300: '#78dfcc',
+          400: '#4fd2bb',
+          500: '#36b9a2',
+          600: '#2b9583',
+          700: '#23786b',
+          800: '#1f5d54',
+          900: '#18413b',
+        },
+        slate: {
+          50: '#f6f8fb',
+          100: '#eaeff5',
+          200: '#d6dde6',
+          300: '#bcc6d1',
+          400: '#95a3b3',
+          500: '#73879a',
+          600: '#5c6c80',
+          700: '#4a5668',
+          800: '#394252',
+          900: '#27303a',
+        },
         primary: {
-          DEFAULT: 'hsl(210 100% 50%)',
-          foreground: 'hsl(0 0% 100%)',
-          hover: 'hsl(210 100% 45%)',
+          DEFAULT: '#3c82d6',
+          foreground: '#ffffff',
+          hover: '#2f6ab0',
+          muted: '#e7f1ff',
         },
-        // Secondary Colors
         secondary: {
-          DEFAULT: 'hsl(160 84% 39%)',
-          foreground: 'hsl(0 0% 100%)',
-          hover: 'hsl(160 84% 34%)',
+          DEFAULT: '#36b9a2',
+          foreground: '#ffffff',
+          hover: '#2b9583',
         },
-        // Accent Colors
         accent: {
-          DEFAULT: 'hsl(262 83% 58%)',
-          foreground: 'hsl(0 0% 100%)',
-          hover: 'hsl(262 83% 53%)',
+          DEFAULT: '#4c7cd6',
+          foreground: '#ffffff',
+          hover: '#3b64b0',
         },
-        // Background Colors
-        background: 'hsl(210 40% 98%)',
-        foreground: 'hsl(222 84% 5%)',
+        background: '#f5f9ff',
+        foreground: '#1f2a37',
         card: {
-          DEFAULT: 'hsl(0 0% 100%)',
-          foreground: 'hsl(222 84% 5%)',
+          DEFAULT: '#ffffff',
+          foreground: '#1f2a37',
         },
         popover: {
-          DEFAULT: 'hsl(0 0% 100%)',
-          foreground: 'hsl(222 84% 5%)',
+          DEFAULT: '#ffffff',
+          foreground: '#1f2a37',
         },
-        // Muted Colors
         muted: {
-          DEFAULT: 'hsl(210 40% 96%)',
-          foreground: 'hsl(215 16% 47%)',
+          DEFAULT: '#eef3fb',
+          foreground: '#5f6b7f',
         },
-        // Border and Input Colors
-        border: 'hsl(214 32% 91%)',
-        input: 'hsl(214 32% 91%)',
-        ring: 'hsl(210 100% 50%)',
-        // Destructive Colors
+        border: '#d6e4f5',
+        input: '#d6e4f5',
+        ring: '#8ab9f2',
         destructive: {
-          DEFAULT: 'hsl(0 84% 60%)',
-          foreground: 'hsl(0 0% 98%)',
+          DEFAULT: '#f0625d',
+          foreground: '#ffffff',
         },
-        // Success Colors
         success: {
-          DEFAULT: 'hsl(142 76% 36%)',
-          foreground: 'hsl(0 0% 98%)',
+          DEFAULT: '#2f9f85',
+          foreground: '#ffffff',
         },
-        // Warning Colors
         warning: {
-          DEFAULT: 'hsl(38 92% 50%)',
-          foreground: 'hsl(0 0% 98%)',
+          DEFAULT: '#f4a63a',
+          foreground: '#ffffff',
         },
       },
       borderRadius: {

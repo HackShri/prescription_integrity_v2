@@ -82,48 +82,50 @@ const Scanner = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <h2 className="text-3xl font-bold mb-6 text-center">QR Code Scanner</h2>
+    <div className="min-h-screen bg-brand-50 p-6">
+      <h2 className="text-3xl font-bold mb-6 text-center text-brand-700">QR Code Scanner</h2>
       {error && (
         <Alert variant="destructive" className="mb-6">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <Card className="w-full max-w-2xl mx-auto">
+      <Card className="w-full max-w-2xl mx-auto card-style">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <QrCode className="w-6 h-6" />
+          <CardTitle className="flex items-center space-x-2 text-slate-900">
+            <QrCode className="w-6 h-6 text-brand-600" />
             <span>Scan Prescription QR Code</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isScanning && <video ref={videoRef} className="w-full rounded-md" />}
+          {isScanning && <video ref={videoRef} className="w-full rounded-lg border border-border/60" />}
           {scannedPrescription && (
-            <div className="mt-4 space-y-2">
-              <p><strong>Patient Email:</strong> {scannedPrescription.patientEmail}</p>
-              <p><strong>Instructions:</strong> {scannedPrescription.instructions}</p>
+            <div className="mt-4 space-y-3 text-slate-700">
+              <p><span className="font-semibold text-slate-900">Patient Email:</span> {scannedPrescription.patientEmail}</p>
+              <p><span className="font-semibold text-slate-900">Instructions:</span> {scannedPrescription.instructions}</p>
               <div>
-                  <p><strong>Medications:</strong></p>
+                  <p className="font-semibold text-slate-900">Medications:</p>
                   {scannedPrescription.medications && scannedPrescription.medications.length > 0 ? (
                     scannedPrescription.medications.map((med, index) => (
-                      <div key={index} className="ml-4 mb-2 p-2 bg-gray-50 rounded">
-                        <p className="font-medium">{med.name} - {med.dosage}</p>
-                        <p className="text-sm text-gray-600">Quantity: {med.quantity}</p>
-                        {med.frequency && <p className="text-sm text-gray-600">Frequency: {med.frequency}</p>}
-                        {med.timing && <p className="text-sm text-gray-600">Timing: {med.timing}</p>}
-                        {med.duration && <p className="text-sm text-gray-600">Duration: {med.duration}</p>}
-                        {med.instructions && <p className="text-sm text-gray-600 italic">Note: {med.instructions}</p>}
+                      <div key={index} className="ml-4 mb-2 p-3 bg-brand-50 border border-brand-100 rounded-lg">
+                        <p className="font-semibold text-slate-900">{med.name} - {med.dosage}</p>
+                        <p className="text-sm text-slate-600">Quantity: {med.quantity}</p>
+                        {med.frequency && <p className="text-sm text-slate-600">Frequency: {med.frequency}</p>}
+                        {med.timing && <p className="text-sm text-slate-600">Timing: {med.timing}</p>}
+                        {med.duration && <p className="text-sm text-slate-600">Duration: {med.duration}</p>}
+                        {med.instructions && <p className="text-sm text-slate-600 italic">Note: {med.instructions}</p>}
                       </div>
                     ))
                   ) : (
-                    <p className="ml-4 text-gray-500 italic">No medications specified</p>
+                    <p className="ml-4 text-slate-500 italic">No medications specified</p>
                   )}
                 </div>
-              <p><strong>Usage:</strong> {scannedPrescription.used} / {scannedPrescription.usageLimit}</p>
-              <p><strong>Expiration Date:</strong> {new Date(scannedPrescription.expiresAt).toLocaleDateString()}</p>
-              <p><strong>Doctor Signature:</strong></p>
-              <img src={scannedPrescription.doctorSignature} alt="Doctor Signature" className="h-20" />
-              <Button onClick={resetScanner} className="mt-4 w-full">
+              <p><span className="font-semibold text-slate-900">Usage:</span> {scannedPrescription.used} / {scannedPrescription.usageLimit}</p>
+              <p><span className="font-semibold text-slate-900">Expiration Date:</span> {new Date(scannedPrescription.expiresAt).toLocaleDateString()}</p>
+              <div>
+                <p className="font-semibold text-slate-900 mb-2">Doctor Signature:</p>
+                <img src={scannedPrescription.doctorSignature} alt="Doctor Signature" className="h-20 rounded border border-border/70" />
+              </div>
+              <Button onClick={resetScanner} className="mt-4 w-full button-style">
                 Scan Another
               </Button>
             </div>

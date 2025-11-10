@@ -35,21 +35,15 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen gradient-primary flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
-      </div>
-
-      <Card className="w-full max-w-md glass slide-in-bottom relative z-10">
+    <div className="min-h-screen bg-brand-50 flex items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-md glass">
         <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mb-4 scale-in">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mx-auto w-16 h-16 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+          <CardTitle className="text-3xl font-bold text-brand-700">
             Welcome Back
           </CardTitle>
           <CardDescription className="text-lg mt-2">
@@ -110,13 +104,13 @@ const Login = () => {
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
           <div className="text-center">
-            <a href="/forgot-password" className="text-sm text-blue-500 hover:text-blue-600 transition-colors duration-200 hover:underline">
+            <a href="/forgot-password" className="text-sm text-brand-600 hover:text-brand-700 transition-colors duration-200 hover:underline">
               Forgot your password?
             </a>
           </div>
           <div className="text-center">
-            <span className="text-sm text-gray-600">Don't have an account? </span>
-            <a href="/signup" className="text-sm text-blue-500 hover:text-blue-600 transition-colors duration-200 hover:underline font-semibold">
+            <span className="text-sm text-slate-600">Don't have an account? </span>
+            <a href="/signup" className="text-sm text-brand-600 hover:text-brand-700 transition-colors duration-200 hover:underline font-semibold">
               Sign Up
             </a>
           </div>

@@ -113,21 +113,16 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen gradient-secondary flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-green-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
-      </div>
+    <div className="min-h-screen bg-brand-50 flex items-center justify-center px-4 py-12">
 
-      <Card className="w-full max-w-md glass slide-in-bottom relative z-10">
+      <Card className="w-full max-w-md glass">
         <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mb-4 scale-in">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mx-auto w-16 h-16 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-green-500 to-blue-500 bg-clip-text text-transparent">
+          <CardTitle className="text-3xl font-bold text-teal-700">
             Create Account
           </CardTitle>
           <CardDescription className="text-lg mt-2">
@@ -160,7 +155,7 @@ const Signup = () => {
                     value="email"
                     checked={contactMethod === 'email'}
                     onChange={(e) => setContactMethod(e.target.value)}
-                    className="text-blue-500"
+                    className="text-brand-500 focus:ring-brand-200"
                   />
                   <span className="text-sm">Email</span>
                 </label>
@@ -171,7 +166,7 @@ const Signup = () => {
                     value="mobile"
                     checked={contactMethod === 'mobile'}
                     onChange={(e) => setContactMethod(e.target.value)}
-                    className="text-blue-500"
+                    className="text-brand-500 focus:ring-brand-200"
                   />
                   <span className="text-sm">Mobile Number</span>
                 </label>
@@ -255,22 +250,24 @@ const Signup = () => {
             <div className="space-y-2">
               <Label className="form-label">Your Photo (optional)</Label>
               {!photoDataUrl && !stream && (
-                <Button type="button" variant="outline" onClick={startCamera}>Open Camera</Button>
+                <Button type="button" variant="outline" onClick={startCamera} className="w-full">
+                  Open Camera
+                </Button>
               )}
               {stream && (
                 <div className="space-y-2">
-                  <video ref={videoRef} autoPlay playsInline className="w-full rounded border" />
+                  <video ref={videoRef} autoPlay playsInline className="w-full rounded border border-border" />
                   <div className="flex gap-2">
-                    <Button type="button" onClick={capturePhoto}>Capture</Button>
-                    <Button type="button" variant="outline" onClick={stopCamera}>Cancel</Button>
+                    <Button type="button" className="flex-1" onClick={capturePhoto}>Capture</Button>
+                    <Button type="button" variant="outline" className="flex-1" onClick={stopCamera}>Cancel</Button>
                   </div>
                 </div>
               )}
               {photoDataUrl && (
                 <div className="space-y-2">
-                  <img src={photoDataUrl} alt="Captured" className="w-40 h-40 object-cover rounded-full border" />
+                  <img src={photoDataUrl} alt="Captured" className="w-40 h-40 object-cover rounded-full border border-border" />
                   <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => { setPhotoDataUrl(''); startCamera(); }}>Retake</Button>
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => { setPhotoDataUrl(''); startCamera(); }}>Retake</Button>
                     <Button type="button" variant="ghost" onClick={() => setPhotoDataUrl('')}>Remove</Button>
                   </div>
                 </div>
@@ -305,8 +302,8 @@ const Signup = () => {
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
           <div className="text-center">
-            <span className="text-sm text-gray-600">Already have an account? </span>
-            <a href="/login" className="text-sm text-green-500 hover:text-green-600 transition-colors duration-200 hover:underline font-semibold">
+            <span className="text-sm text-slate-600">Already have an account? </span>
+            <a href="/login" className="text-sm text-brand-600 hover:text-brand-700 transition-colors duration-200 hover:underline font-semibold">
               Sign In
             </a>
           </div>

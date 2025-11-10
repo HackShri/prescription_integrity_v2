@@ -906,23 +906,23 @@ const OCRScanner = () => {
   const displaySuccess = success || patientSuccess;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-brand-50 p-6">
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-3xl font-bold mb-6 text-center text-blue-600">Enhanced OCR Prescription Scanner</h2>
+        <h2 className="text-3xl font-bold mb-6 text-center text-brand-700">Enhanced OCR Prescription Scanner</h2>
 
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-start text-blue-800">
+        <div className="mb-6 p-4 bg-brand-50 border border-brand-100 rounded-lg">
+          <div className="flex items-start text-brand-700">
             <AlertTriangle className="w-5 h-5 mr-2 mt-0.5" />
             <div>
-              <p className="font-medium">Advanced Entity Extraction</p>
-              <p className="text-sm mt-1">This scanner automatically identifies and populates prescription fields including patient info, medications, dosages, frequencies, and medical instructions from OCR text.</p>
+              <p className="font-medium text-slate-800">Advanced Entity Extraction</p>
+              <p className="text-sm mt-1 text-slate-600">This scanner automatically identifies and populates prescription fields including patient info, medications, dosages, frequencies, and medical instructions from OCR text.</p>
             </div>
           </div>
         </div>
 
         {displayError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center text-red-800">
+          <div className="mb-6 alert-error">
+            <div className="flex items-center text-destructive">
               <AlertTriangle className="w-5 h-5 mr-2" />
               {displayError}
             </div>
@@ -930,9 +930,9 @@ const OCRScanner = () => {
         )}
 
         {displaySuccess && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center text-green-800">
-              <CheckCircle className="w-5 h-5 mr-2" />
+          <div className="mb-6 alert-success">
+            <div className="flex items-center text-teal-700">
+              <CheckCircle className="w-5 h-5 mr-2 text-teal-600" />
               {displaySuccess}
             </div>
           </div>
@@ -952,7 +952,7 @@ const OCRScanner = () => {
                 <div className="space-y-2">
                   <button
                     onClick={isCameraActive ? stopCamera : startCamera}
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                    className="w-full px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors flex items-center justify-center"
                   >
                     <Camera className="w-4 h-4 mr-2" />
                     {isCameraActive ? 'Stop Camera' : 'Start Camera'}
@@ -962,14 +962,14 @@ const OCRScanner = () => {
                     <div className="space-y-2">
                       <video
                         ref={videoRef}
-                        className="w-full rounded-lg border-2 border-blue-200"
+                        className="w-full rounded-lg border-2 border-brand-100"
                         autoPlay
                         playsInline
                         muted
                       />
                       <button
                         onClick={captureImage}
-                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        className="w-full px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
                       >
                         Capture Image
                       </button>
@@ -985,7 +985,7 @@ const OCRScanner = () => {
                   type="file"
                   accept="image/*"
                   onChange={handleImageUpload}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                 />
               </div>
 
@@ -995,12 +995,12 @@ const OCRScanner = () => {
                   <img
                     src={image}
                     alt="Prescription"
-                    className="w-full rounded-lg border-2 border-gray-200"
+                    className="w-full rounded-lg border-2 border-border/70"
                   />
                   <button
                     onClick={extractText}
                     disabled={isProcessing}
-                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 button-style disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isProcessing ? 'Extracting & Processing...' : 'Extract Text & Auto-Fill'}
                   </button>
@@ -1043,7 +1043,7 @@ const OCRScanner = () => {
                       value={prescriptionData.patientName}
                       onChange={(e) => handleInputChange("patientName", e.target.value)}
                       placeholder="John Doe"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1053,7 +1053,7 @@ const OCRScanner = () => {
                       value={prescriptionData.patientEmail}
                       onChange={(e) => handleInputChange("patientEmail", e.target.value)}
                       placeholder="patient@example.com"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1063,7 +1063,7 @@ const OCRScanner = () => {
                       value={prescriptionData.patientMobile}
                       onChange={(e) => handleInputChange('patientMobile', e.target.value)}
                       placeholder="+1234567890"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                     />
                   </div>
                 </div>
@@ -1079,7 +1079,7 @@ const OCRScanner = () => {
                         value={prescriptionData.doctorName}
                         onChange={(e) => handleInputChange('doctorName', e.target.value)}
                         placeholder="Dr. John Smith"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                         required
                       />
                     </div>
@@ -1090,7 +1090,7 @@ const OCRScanner = () => {
                         value={prescriptionData.doctorEmail}
                         onChange={(e) => handleInputChange('doctorEmail', e.target.value)}
                         placeholder="doctor@hospital.com"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1100,7 +1100,7 @@ const OCRScanner = () => {
                         value={prescriptionData.doctorMobile}
                         onChange={(e) => handleInputChange('doctorMobile', e.target.value)}
                         placeholder="+1234567890"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                       />
                     </div>
                   </div>
@@ -1114,7 +1114,7 @@ const OCRScanner = () => {
                         value={prescriptionData.clinicName}
                         onChange={(e) => handleInputChange('clinicName', e.target.value)}
                         placeholder="City Hospital"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1124,7 +1124,7 @@ const OCRScanner = () => {
                         value={prescriptionData.clinicAddress}
                         onChange={(e) => handleInputChange('clinicAddress', e.target.value)}
                         placeholder="123 Main St, City, State"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                       />
                     </div>
                   </div>
@@ -1137,7 +1137,7 @@ const OCRScanner = () => {
                     value={prescriptionData.instructions}
                     onChange={(e) => handleInputChange('instructions', e.target.value)}
                     placeholder="Enter general instructions..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                   />
                 </div>
 
@@ -1146,7 +1146,7 @@ const OCRScanner = () => {
                     <label className="block text-sm font-medium text-gray-700">Medications</label>
                     <button
                       onClick={addMedication}
-                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                      className="px-3 py-1 bg-brand-600 text-white text-sm rounded hover:bg-brand-700 transition-colors"
                     >
                       Add Medication
                     </button>
@@ -1158,7 +1158,7 @@ const OCRScanner = () => {
                         <span className="font-medium">Medication {index + 1}</span>
                         <button
                           onClick={() => removeMedication(index)}
-                          className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                          className="px-2 py-1 bg-destructive text-white text-xs rounded hover:bg-destructive/90 transition-colors"
                         >
                           Remove
                         </button>
@@ -1169,7 +1169,7 @@ const OCRScanner = () => {
                         interaction.drug1.toLowerCase() === med.name.toLowerCase() ||
                         interaction.drug2.toLowerCase() === med.name.toLowerCase()
                       ) && (
-                          <div className="p-2 bg-red-100 border border-red-300 rounded text-red-800 text-sm">
+                          <div className="p-2 bg-destructive/10 border border-destructive/30 rounded text-destructive text-sm">
                             ⚠️ Potential drug interaction detected
                           </div>
                         )}
@@ -1180,14 +1180,14 @@ const OCRScanner = () => {
                           placeholder="Medicine name"
                           value={med.name}
                           onChange={(e) => handleMedicationChange(index, 'name', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-3 py-2 border border-border rounded focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                         />
                         <input
                           type="text"
                           placeholder="Dosage (e.g., 500mg)"
                           value={med.dosage}
                           onChange={(e) => handleMedicationChange(index, 'dosage', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-3 py-2 border border-border rounded focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                         />
                       </div>
 
@@ -1197,14 +1197,14 @@ const OCRScanner = () => {
                           placeholder="Frequency (e.g., twice daily)"
                           value={med.frequency}
                           onChange={(e) => handleMedicationChange(index, 'frequency', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-3 py-2 border border-border rounded focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                         />
                         <input
                           type="text"
                           placeholder="Timing (e.g., after meals)"
                           value={med.timing}
                           onChange={(e) => handleMedicationChange(index, 'timing', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-3 py-2 border border-border rounded focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                         />
                       </div>
 
@@ -1214,14 +1214,14 @@ const OCRScanner = () => {
                           placeholder="Duration (e.g., 7 days)"
                           value={med.duration}
                           onChange={(e) => handleMedicationChange(index, 'duration', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-3 py-2 border border-border rounded focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                         />
                         <input
                           type="text"
                           placeholder="Quantity (e.g., 1 tablet)"
                           value={med.quantity}
                           onChange={(e) => handleMedicationChange(index, 'quantity', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-3 py-2 border border-border rounded focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                         />
                       </div>
                     </div>
@@ -1236,7 +1236,7 @@ const OCRScanner = () => {
                       <button
                         onClick={checkDrugInteractions}
                         disabled={isCheckingDrugs || prescriptionData.medications.length === 0}
-                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-warning/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                       >
                         {isCheckingDrugs ? (
                           <>
@@ -1254,17 +1254,17 @@ const OCRScanner = () => {
 
                     {drugInteractions.length > 0 && (
                       <div className="space-y-2">
-                        <h5 className="font-medium text-red-800">⚠️ Drug Interactions Detected:</h5>
+                        <h5 className="font-medium text-destructive">⚠️ Drug Interactions Detected:</h5>
                         {drugInteractions.map((interaction, index) => (
-                          <div key={index} className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                            <p className="font-medium text-red-800">
+                          <div key={index} className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                            <p className="font-medium text-destructive">
                               {interaction.drug1} + {interaction.drug2}
                             </p>
-                            <p className="text-sm text-red-700 mt-1">
+                            <p className="text-sm text-destructive/80 mt-1">
                               {interaction.severity}: {interaction.description}
                             </p>
                             {interaction.recommendation && (
-                              <p className="text-sm text-red-600 mt-2 italic">
+                              <p className="text-sm text-destructive/80 mt-2 italic">
                                 Recommendation: {interaction.recommendation}
                               </p>
                             )}
@@ -1283,7 +1283,7 @@ const OCRScanner = () => {
                       value={prescriptionData.age}
                       onChange={(e) => handleInputChange('age', e.target.value)}
                       placeholder="Age"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1293,7 +1293,7 @@ const OCRScanner = () => {
                       value={prescriptionData.weight}
                       onChange={(e) => handleInputChange('weight', e.target.value)}
                       placeholder="Weight"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1303,7 +1303,7 @@ const OCRScanner = () => {
                       value={prescriptionData.height}
                       onChange={(e) => handleInputChange('height', e.target.value)}
                       placeholder="Height"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1313,7 +1313,7 @@ const OCRScanner = () => {
                       value={prescriptionData.usageLimit}
                       onChange={(e) => handleInputChange('usageLimit', e.target.value)}
                       placeholder="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                     />
                   </div>
                 </div>
@@ -1324,7 +1324,7 @@ const OCRScanner = () => {
                     type="date"
                     value={prescriptionData.expiresAt}
                     onChange={(e) => handleInputChange('expiresAt', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
                   />
                 </div>
 

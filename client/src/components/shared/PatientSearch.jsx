@@ -26,10 +26,10 @@ const PatientSearch = ({
   };
 
   return (
-    <div className={`bg-blue-50 p-4 rounded-lg border border-blue-200 ${className}`}>
+    <div className={`bg-brand-50 p-4 rounded-lg border border-brand-100 ${className}`}>
       <div className="flex items-center mb-2">
-        <Search className="w-4 h-4 mr-2 text-blue-600" />
-        <label className="text-blue-800 font-medium">Quick Patient Search</label>
+        <Search className="w-4 h-4 mr-2 text-brand-600" />
+        <label className="text-brand-700 font-medium">Quick Patient Search</label>
       </div>
       <div className="flex space-x-2">
         <input
@@ -37,16 +37,16 @@ const PatientSearch = ({
           placeholder={placeholder}
           value={searchId}
           onChange={(e) => handleSearchChange(e.target.value)}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="flex-1 px-3 py-2 border border-border rounded focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
         />
         {isLoading && (
           <div className="flex items-center px-3">
-            <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+            <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
           </div>
         )}
       </div>
       {showInstructions && (
-        <p className="text-sm text-blue-600 mt-1">
+        <p className="text-sm text-brand-600 mt-1">
           Enter 4+ characters to auto-populate patient details
         </p>
       )}

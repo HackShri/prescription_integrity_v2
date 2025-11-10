@@ -20,27 +20,33 @@ const MyAccount = () => {
     fetchUser();
   }, []);
 
-  if (!user) return <div>Loading...</div>;
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-brand-50 flex items-center justify-center text-slate-600">
+        Loading...
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-brand-50">
       <Header />
       <main className="p-6 max-w-4xl mx-auto">
-        <h2 className="text-3xl font-bold mb-6">My Account</h2>
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <p><strong>Name:</strong> {user.name}</p>
-          <p><strong>Email:</strong> {user.email}</p>
-          <p><strong>Role:</strong> {user.role}</p>
-          <p><strong>Age:</strong> {user.age}</p>
-          <p><strong>Weight:</strong> {user.weight} kg</p>
-          <p><strong>Height:</strong> {user.height} cm</p>
+        <h2 className="text-3xl font-bold mb-6 text-brand-700">My Account</h2>
+        <div className="bg-white p-6 rounded-xl border border-border/70 shadow-sm space-y-3 text-slate-700">
+          <p><span className="font-semibold text-slate-900">Name:</span> {user.name}</p>
+          <p><span className="font-semibold text-slate-900">Email:</span> {user.email}</p>
+          <p><span className="font-semibold text-slate-900">Role:</span> {user.role}</p>
+          <p><span className="font-semibold text-slate-900">Age:</span> {user.age}</p>
+          <p><span className="font-semibold text-slate-900">Weight:</span> {user.weight} kg</p>
+          <p><span className="font-semibold text-slate-900">Height:</span> {user.height} cm</p>
           {user.photo && (
             <div className="mt-4">
-              <p><strong>Profile Photo:</strong></p>
-              <img src={user.photo} alt="Profile" className="w-32 h-32 object-cover rounded-full" />
+              <p className="font-semibold text-slate-900 mb-2">Profile Photo:</p>
+              <img src={user.photo} alt="Profile" className="w-32 h-32 object-cover rounded-full border border-border/70" />
             </div>
           )}
-          <Button onClick={() => navigate('/dashboard')} className="mt-6">
+          <Button onClick={() => navigate('/dashboard')} className="mt-6 button-style">
             Back to Dashboard
           </Button>
         </div>
