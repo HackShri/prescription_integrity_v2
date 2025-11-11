@@ -3,17 +3,17 @@ import logging
 from typing import Dict, List
 
 import os
+# ✅ Modernized imports for LangChain ≥1.0
 from langchain_community.vectorstores import Chroma
 from langchain_community.vectorstores.utils import filter_complex_metadata
-from langchain.docstore.document import Document
-from langchain.prompts import PromptTemplate
-from langchain.schema.runnable import RunnablePassthrough
+from langchain_core.documents import Document
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnablePassthrough
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_ollama import OllamaLLM as Ollama
-
-# Import new parsers
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field     # ← Pydantic v2 handles this directly
+
 
 
 logger = logging.getLogger(__name__)

@@ -1,14 +1,22 @@
 """
-Updated Inference Service with Gemini Vision OCR
-Integrates optimized Whisper + Fast RAG + Gemini Vision
+Medical AI Inference Service with Real RAG System
+Integrates optimized Whisper + Real RAG (Chroma + LangChain + Ollama) + Gemini Vision OCR
+
+This service uses a TRUE RAG (Retrieval-Augmented Generation) pipeline:
+1. Vector retrieval using Chroma for semantic search
+2. Context augmentation with retrieved medical knowledge
+3. LLM generation using Ollama (Meditron) for structured prescription output
+4. Fallback to rule-based defaults if LLM fails
 """
 
 import os
 import io
 import json
 import logging
+import warnings
 from typing import Optional, Dict, List
 from datetime import datetime, timedelta
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 import torch
@@ -23,10 +31,8 @@ from PIL import Image
 # Audio processing
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 
-# Vector store
-from sentence_transformers import SentenceTransformer
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
+# Real RAG System
+from rag_prescription_generator import RAGPrescriptionGenerator
 
 # Gemini for OCR
 import google.generativeai as genai
@@ -45,7 +51,6 @@ load_dotenv()
 class Config:
     # Model selections
     WHISPER_MODEL = "openai/whisper-small"
-    EMBEDDING_MODEL = "all-MiniLM-L6-v2"
     GEMINI_MODEL = "gemini-2.5-flash"  # Fast and cheap for OCR
     
     # Device
@@ -56,7 +61,6 @@ class Config:
     
     # Paths
     KNOWLEDGE_BASE_PATH = "medical_data.json"
-    EMBEDDING_CACHE_PATH = "embeddings_cache.npy"
     
     # Performance
     MAX_AUDIO_LENGTH = 30
@@ -184,133 +188,10 @@ class GeminiOCR:
             raise HTTPException(500, f"OCR failed: {str(e)}")
 
 # ============================================================================
-# FAST RAG SYSTEM
+# REAL RAG SYSTEM - Now using RAGPrescriptionGenerator
 # ============================================================================
-
-class FastRAGSystem:
-    """Lightweight RAG for medication lookup"""
-    
-    def __init__(self, knowledge_base_path: str):
-        logger.info("Initializing Fast RAG System...")
-        
-        with open(knowledge_base_path, 'r') as f:
-            self.knowledge_base: List[Dict] = json.load(f)
-        
-        self.embedder = SentenceTransformer(config.EMBEDDING_MODEL)
-        
-        if os.path.exists(config.EMBEDDING_CACHE_PATH):
-            self.embeddings = np.load(config.EMBEDDING_CACHE_PATH)
-            logger.info("Loaded cached embeddings")
-        else:
-            self._create_embeddings()
-        
-        self.symptom_index = self._build_symptom_index()
-        logger.info(f"✅ RAG initialized with {len(self.knowledge_base)} conditions")
-    
-    def _create_embeddings(self):
-        """Create and cache embeddings"""
-        logger.info("Creating embeddings...")
-        texts = []
-        for item in self.knowledge_base:
-            text_parts = [
-                item['condition_name'],
-                ', '.join(item.get('symptoms', [])),
-                ', '.join([d['name'] for d in item.get('suggested_drugs', [])])
-            ]
-            texts.append(' '.join(text_parts))
-        
-        self.embeddings = self.embedder.encode(texts, show_progress_bar=True)
-        np.save(config.EMBEDDING_CACHE_PATH, self.embeddings)
-        logger.info("✅ Embeddings cached")
-    
-    def _build_symptom_index(self) -> Dict[str, List[int]]:
-        """Build symptom lookup index"""
-        index = {}
-        for idx, item in enumerate(self.knowledge_base):
-            for symptom in item.get('symptoms', []):
-                symptom_lower = symptom.lower().strip()
-                if symptom_lower not in index:
-                    index[symptom_lower] = []
-                index[symptom_lower].append(idx)
-        return index
-    
-    def find_condition(self, transcription: str) -> Optional[Dict]:
-        """Find matching condition"""
-        transcription_lower = transcription.lower()
-        
-        # Fast path: direct symptom matching
-        matched_indices = set()
-        for symptom, indices in self.symptom_index.items():
-            if symptom in transcription_lower:
-                matched_indices.update(indices)
-        
-        if matched_indices:
-            return self.knowledge_base[list(matched_indices)[0]]
-        
-        # Semantic search
-        query_embedding = self.embedder.encode([transcription])
-        similarities = cosine_similarity(query_embedding, self.embeddings)[0]
-        best_idx = np.argmax(similarities)
-        
-        if similarities[best_idx] > 0.3:
-            return self.knowledge_base[best_idx]
-        
-        return None
-    
-    def generate_prescription(self, transcription: str) -> Dict:
-        """Generate prescription from transcription"""
-        condition_data = self.find_condition(transcription)
-        
-        if not condition_data:
-            return {
-                "error": "Could not identify condition",
-                "transcription": transcription,
-                "medications": [],
-                "general_advice": "Consult a healthcare professional."
-            }
-        
-        medications = []
-        for drug in condition_data.get('suggested_drugs', []):
-            med = self._format_medication(drug['name'], transcription)
-            medications.append(med)
-        
-        return {
-            "condition": condition_data['condition_name'],
-            "symptoms_matched": condition_data.get('symptoms', []),
-            "medications": medications,
-            "general_advice": condition_data.get('general_advice', ''),
-            "transcription": transcription
-        }
-    
-    def _format_medication(self, drug_name: str, context: str) -> Dict:
-        """Format medication with defaults"""
-        defaults = {
-            "Acetaminophen": ("500mg", "every 6 hours", "as needed", "3 days", 12),
-            "Ibuprofen": ("400mg", "twice daily", "with food", "5 days", 10),
-            "Cetirizine": ("10mg", "once daily", "evening", "7 days", 7),
-            "Loratadine": ("10mg", "once daily", "morning", "7 days", 7),
-            "Antacid": ("10ml", "thrice daily", "after meals", "5 days", 1),
-            "Ondansetron": ("4mg", "twice daily", "as needed", "3 days", 6),
-            "Loperamide": ("2mg", "after loose stool", "as needed", "2 days", 8),
-            "Naproxen": ("250mg", "twice daily", "with food", "5 days", 10),
-            "Hydrocortisone Cream": ("1%", "twice daily", "topical", "7 days", 1),
-            "Dextromethorphan Syrup": ("10ml", "every 6 hours", "as needed", "5 days", 1),
-        }
-        
-        dosage, frequency, timing, duration, quantity = defaults.get(
-            drug_name,
-            ("As directed", "As directed", "As directed", "As directed", 1)
-        )
-        
-        return {
-            "name": drug_name,
-            "dosage": dosage,
-            "frequency": frequency,
-            "timing": timing,
-            "duration": duration,
-            "quantity": quantity,
-            "instructions": f"Take {drug_name} {frequency} {timing}"
-        }
+# The real RAG system is imported from rag_prescription_generator.py
+# It uses Chroma vector store, LangChain, and Ollama LLM for true RAG
 
 # ============================================================================
 # OPTIMIZED WHISPER
@@ -326,6 +207,14 @@ class OptimizedWhisperProcessor:
         self.model = WhisperForConditionalGeneration.from_pretrained(
             config.WHISPER_MODEL
         ).to(config.DEVICE)
+        
+        # Configure tokenizer to handle pad/eos tokens properly
+        # Whisper's tokenizer uses pad_token_id = eos_token_id by design
+        # This is intentional and doesn't affect single-audio transcription
+        tokenizer = self.processor.tokenizer
+        if tokenizer.pad_token_id is None:
+            # Set pad_token_id to eos_token_id (Whisper's default behavior)
+            tokenizer.pad_token_id = tokenizer.eos_token_id
         
         if config.DEVICE == "cuda":
             self.model = self.model.half()
@@ -354,23 +243,42 @@ class OptimizedWhisperProcessor:
         if len(speech) == 0:
             raise ValueError("Empty audio")
         
-        inputs = self.processor(
+        # Process audio to mel spectrogram features
+        # Note: WhisperProcessor returns input_features (mel spectrograms), not tokens
+        # There's no attention_mask for audio inputs - this is normal for Whisper
+        processed = self.processor(
             speech,
             sampling_rate=sr,
             return_tensors="pt"
-        ).input_features.to(config.DEVICE)
+        )
+        input_features = processed.input_features.to(config.DEVICE)
         
+        # Get decoder prompt IDs for language and task
         forced_decoder_ids = self.processor.get_decoder_prompt_ids(
             language="english",
             task="transcribe"
         )
         
-        predicted_ids = self.model.generate(
-            inputs,
-            forced_decoder_ids=forced_decoder_ids,
-            max_length=225,
-            num_beams=5
-        )
+        # Generate transcription
+        # Note: Whisper models intentionally use pad_token_id = eos_token_id
+        # This is by design and the warning is harmless for single-audio transcription
+        # The warning occurs in the decoder (text generation), not the encoder (audio processing)
+        
+        # Suppress the harmless attention mask warning to keep logs clean
+        # This warning doesn't affect transcription quality for single audio files
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=".*attention mask.*pad token.*eos token.*",
+            )
+            
+            predicted_ids = self.model.generate(
+                input_features,
+                forced_decoder_ids=forced_decoder_ids,
+                max_length=225,
+                num_beams=5,
+                early_stopping=True,  # Stop generation after EOS token
+            )
         
         transcription = self.processor.batch_decode(
             predicted_ids,
@@ -381,12 +289,75 @@ class OptimizedWhisperProcessor:
         return transcription
 
 # ============================================================================
+# GLOBAL INSTANCES
+# ============================================================================
+
+# Global instances (initialized in lifespan)
+whisper: Optional[OptimizedWhisperProcessor] = None
+rag: Optional[RAGPrescriptionGenerator] = None
+gemini_ocr: Optional[GeminiOCR] = None
+
+# ============================================================================
+# LIFESPAN EVENT HANDLER (Modern FastAPI approach)
+# ============================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for FastAPI startup and shutdown events.
+    This replaces the deprecated @app.on_event("startup") decorator.
+    
+    - Code before 'yield' runs at startup
+    - Code after 'yield' runs at shutdown
+    """
+    global whisper, rag, gemini_ocr
+    
+    # ==================== STARTUP LOGIC ====================
+    logger.info("=" * 60)
+    logger.info("Starting Medical AI Service")
+    logger.info(f"Device: {config.DEVICE}")
+    logger.info(f"Gemini API: {'✅ Configured' if config.GEMINI_API_KEY else '❌ Not set'}")
+    logger.info("=" * 60)
+    
+    try:
+        # Initialize Whisper
+        logger.info("Loading Whisper...")
+        whisper = OptimizedWhisperProcessor()
+        logger.info("✅ Whisper loaded")
+        
+        # Initialize REAL RAG system with Chroma, LangChain, and Ollama
+        logger.info("Initializing Real RAG System (Chroma + LangChain + Ollama)...")
+        rag = RAGPrescriptionGenerator(data_path=config.KNOWLEDGE_BASE_PATH)
+        logger.info("✅ Real RAG System initialized")
+        
+        # Initialize Gemini OCR
+        logger.info("Initializing Gemini OCR...")
+        gemini_ocr = GeminiOCR()
+        logger.info("✅ All services ready!")
+        
+    except Exception as e:
+        logger.error(f"❌ Startup failed: {e}", exc_info=True)
+        raise
+    
+    # Yield control to the application
+    # The app runs here
+    yield
+    
+    # ==================== SHUTDOWN LOGIC ====================
+    # Optional cleanup code goes here
+    logger.info("Shutting down Medical AI Service...")
+    # Add any cleanup logic here if needed
+    # For example: close database connections, cleanup resources, etc.
+    logger.info("✅ Service shutdown complete")
+
+# ============================================================================
 # FASTAPI APPLICATION
 # ============================================================================
 
 app = FastAPI(
     title="Medical AI Service with Gemini OCR",
-    version="5.0.0"
+    version="5.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -397,7 +368,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Request models
+# ============================================================================
+# REQUEST MODELS
+# ============================================================================
+
 class AskPayload(BaseModel):
     question: str
 
@@ -407,31 +381,6 @@ class OCRResponse(BaseModel):
     confidence: str
     characters_extracted: int
 
-# Global instances
-whisper: Optional[OptimizedWhisperProcessor] = None
-rag: Optional[FastRAGSystem] = None
-gemini_ocr: Optional[GeminiOCR] = None
-
-@app.on_event("startup")
-def startup_event():
-    """Initialize all services"""
-    global whisper, rag, gemini_ocr
-    
-    logger.info("=" * 60)
-    logger.info("Starting Medical AI Service")
-    logger.info(f"Device: {config.DEVICE}")
-    logger.info(f"Gemini API: {'✅ Configured' if config.GEMINI_API_KEY else '❌ Not set'}")
-    logger.info("=" * 60)
-    
-    try:
-        whisper = OptimizedWhisperProcessor()
-        rag = FastRAGSystem(config.KNOWLEDGE_BASE_PATH)
-        gemini_ocr = GeminiOCR()
-        logger.info("✅ All services ready!")
-    except Exception as e:
-        logger.error(f"❌ Startup failed: {e}", exc_info=True)
-        raise
-
 @app.get("/health")
 def health_check():
     """Health check"""
@@ -440,7 +389,9 @@ def health_check():
         "device": config.DEVICE,
         "gemini_ocr": "available" if gemini_ocr and gemini_ocr.model else "not configured",
         "whisper_model": config.WHISPER_MODEL,
-        "conditions_loaded": len(rag.knowledge_base) if rag else 0
+        "rag_system": "Real RAG (Chroma + LangChain + Ollama)" if rag else "not initialized",
+        "ollama_model": rag.model_name if rag else "not configured",
+        "conditions_loaded": len(rag._raw_kb) if rag else 0
     }
 
 @app.post("/ocr-extract")
@@ -499,32 +450,51 @@ async def generate_prescription(
     age: int = Form(30),
     weight: float = Form(70.0)
 ):
-    """Audio → Transcription → Prescription"""
+    """
+    Audio → Transcription → Real RAG Prescription Generation
+    
+    This endpoint uses the REAL RAG system which:
+    1. Transcribes audio using Whisper
+    2. Retrieves relevant medical context using Chroma vector store
+    3. Generates structured prescription using Ollama LLM
+    4. Returns dynamically generated medication details
+    """
     
     try:
         audio_bytes = await audio.read()
         logger.info(f"Processing audio: {audio.filename}")
         
+        # Step 1: Transcribe audio
         transcription = whisper.transcribe(audio_bytes)
         
         if not transcription:
             raise HTTPException(400, "No speech detected")
         
-        prescription_data = rag.generate_prescription(transcription)
+        logger.info(f"Transcription: '{transcription}'")
         
+        # Step 2: Use REAL RAG system to generate prescription
+        # This uses Chroma retrieval + Ollama LLM generation
+        prescription_data = rag.generate(transcription)
+        
+        # Handle error responses from RAG system
+        if "error" in prescription_data:
+            logger.warning(f"RAG system returned error: {prescription_data['error']}")
+            raise HTTPException(400, prescription_data.get("error", "Could not generate prescription"))
+        
+        # Step 3: Format response (RAG returns 'general_advice', API expects 'instructions')
         result = {
             "transcription": transcription,
             "prescriptionData": {
                 "age": age,
                 "weight": weight,
                 "condition": prescription_data.get("condition", "Unknown"),
-                "instructions": prescription_data.get("general_advice", ""),
+                "instructions": prescription_data.get("general_advice", "Follow medication instructions carefully."),
                 "medications": prescription_data.get("medications", []),
                 "expiresAt": (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
             }
         }
         
-        logger.info(f"✅ Generated prescription with {len(result['prescriptionData']['medications'])} meds")
+        logger.info(f"✅ Generated prescription with {len(result['prescriptionData']['medications'])} meds using Real RAG")
         return result
         
     except HTTPException:
@@ -535,17 +505,33 @@ async def generate_prescription(
 
 @app.post("/ask")
 async def ask_question(payload: AskPayload):
-    """Simple Q&A using RAG"""
+    """
+    Simple Q&A using Real RAG System
+    
+    This endpoint uses the REAL RAG system to answer medical questions:
+    1. Retrieves relevant context from Chroma vector store
+    2. Uses Ollama LLM to generate intelligent responses
+    3. Returns contextual medical advice
+    """
     
     try:
-        result = rag.generate_prescription(payload.question)
+        # Use REAL RAG system to generate response
+        result = rag.generate(payload.question)
         
         if "error" in result:
-            content = result["general_advice"]
+            content = result.get("general_advice", "I couldn't find relevant information. Please consult a healthcare professional.")
         else:
             condition = result.get("condition", "your condition")
             advice = result.get("general_advice", "")
-            content = f"Based on your symptoms, this appears to be {condition}. {advice}"
+            medications = result.get("medications", [])
+            
+            # Build comprehensive response
+            content = f"Based on your query, this appears to be related to {condition}. "
+            content += f"{advice}"
+            
+            if medications:
+                med_names = [med.get("name", "Unknown") for med in medications]
+                content += f"\n\nSuggested medications: {', '.join(med_names)}"
         
         return {"content": content}
         
