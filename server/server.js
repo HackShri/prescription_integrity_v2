@@ -14,7 +14,7 @@ dotenv.config();
 const app = express();
 
 // ✅ CORS config to allow both ports
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001', 'http://192.168.56.1:5000'];
 
 app.use(cors({
   origin: function (origin, callback) {
