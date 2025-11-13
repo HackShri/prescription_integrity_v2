@@ -1,27 +1,22 @@
-import { View, Text, Button, StyleSheet } from 'react-native';
-import { Link } from 'expo-router';
+import { useContext, useEffect } from "react";
+import { AuthContext } from "../context/AuthContext";
+import { router } from "expo-router";
+import { View, ActivityIndicator } from "react-native";
 
-export default function Home() {
+export default function Index() {
+    const { user, loading } = useContext(AuthContext);
+
+    useEffect(() => {
+        if (!loading) {
+            if (user?.role === "patient") router.replace("/patient");
+            else if (user?.role === "pharmacist") router.replace("/pharmacist");
+            else router.replace("/auth/login");
+        }
+    }, [user, loading]);
+
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Welcome to Prescription Integrity ⚕️</Text>
-
-            <Link href="/doctor" asChild>
-                <Button title="Doctor Dashboard" />
-            </Link>
-
-            <Link href="/patient" asChild>
-                <Button title="Patient Dashboard" />
-            </Link>
-
-            <Link href="/pharmacist" asChild>
-                <Button title="Pharmacist Dashboard" />
-            </Link>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" />
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    title: { fontSize: 22, fontWeight: 'bold', marginBottom: 30 },
-});
