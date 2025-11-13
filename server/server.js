@@ -14,7 +14,7 @@ dotenv.config();
 const app = express();
 
 // ✅ CORS config to allow both ports
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001', 'http://192.168.56.1:5000'];
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001', 'http://172.25.11.168:5000', 'exp://192.168.56.1:8081'];
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -72,8 +72,8 @@ app.use('/api/verification', require('./routes/verification'));
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST'],
+    origin: "*",
+    methods: ['GET', 'POST', "PUT", "DELETE"],
     credentials: true,
   },
 });

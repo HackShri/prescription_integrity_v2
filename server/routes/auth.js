@@ -105,13 +105,13 @@ router.post('/signup', async (req, res) => {
     const token = jwt.sign({ userId: user._id, role: user.role }, jwtSecret, {
       expiresIn: '24h', // 24 hours
     });
-    
+
     // Create session with 24-hour expiration
     req.session.userId = user._id.toString();
     req.session.userRole = user.role;
     req.session.isAuthenticated = true;
-    
-    res.status(201).json({ 
+
+    res.status(201).json({
       token,
       message: 'User registered successfully',
       session: {
@@ -129,7 +129,9 @@ router.post('/signup', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  const { emailOrMobile, password } = req.body;
+  const emailOrMobile = req.body.emailOrMobile || req.body.email || req.body.mobile;
+  const password = req.body.password;
+
   try {
     // Find user by either email or mobile number
     const user = await User.findOne({
@@ -138,7 +140,7 @@ router.post('/login', async (req, res) => {
         { mobile: emailOrMobile }
       ]
     });
-    
+
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -156,13 +158,13 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ userId: user._id, role: user.role }, jwtSecret, {
       expiresIn: '24h', // 24 hours
     });
-    
+
     // Create session with 24-hour expiration
     req.session.userId = user._id.toString();
     req.session.userRole = user.role;
     req.session.isAuthenticated = true;
-    
-    res.json({ 
+
+    res.json({
       token,
       message: 'Login successful',
       session: {
@@ -267,14 +269,14 @@ router.get('/me', authMiddleware, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     // Check if session is still valid
     const sessionInfo = req.session.isAuthenticated ? {
       authenticated: true,
       expiresIn: '24h',
       sessionId: req.sessionID
     } : null;
-    
+
     res.json({ ...user.toObject(), session: sessionInfo });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -301,11 +303,11 @@ router.patch('/notifications/:id/read', authMiddleware, async (req, res) => {
       { read: true },
       { new: true }
     );
-    
+
     if (!notification) {
       return res.status(404).json({ message: 'Notification not found' });
     }
-    
+
     res.json(notification);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -319,7 +321,7 @@ router.patch('/notifications/read-all', authMiddleware, async (req, res) => {
       { user: req.user.userId, read: false },
       { read: true }
     );
-    
+
     res.json({ message: 'All notifications marked as read' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
